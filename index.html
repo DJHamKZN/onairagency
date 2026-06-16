@@ -1,1 +1,416 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- SEO Meta Tags -->
+    <title>Маркетинговое агентство OnAir | Генерируем прибыль, а не просто охваты</title>
+    <meta name="description" content="Комплексный Performance-маркетинг с гарантией окупаемости (ROMI). Сквозная аналитика, автоворонки, SMM, нейросети и ИИ под руководством Артура Хамеева. Получите бесплатный аудит точек роста." />
+    <meta name="keywords" content="маркетинговое агентство, OnAir, перформанс маркетинг, сквозная аналитика, Артур Хамеев, продвижение бизнеса, трафик, лидогенерация" />
+
+    <!-- Open Graph (VK, Telegram, etc.) -->
+    <meta property="og:title" content="Маркетинговое агентство OnAir | Генерируем прибыль, а не просто охваты" />
+    <meta property="og:description" content="Выстраиваем воронки продаж, которые стабильно приносят окупаемых клиентов. Бесплатный аудит маркетинга для вашего бизнеса." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="OnAir" />
+    <meta property="og:url" content="https://hameev-onair.ru" />
+    <!-- og:image: для гарантированного превью замените URL ниже на свой баннер 1200×630, загруженный на ваш хостинг -->
+    <meta property="og:image" content="https://lh3.googleusercontent.com/d/1g1ttZcG5WGfhQsE_TNG1Y2Y1ra0l_S0P" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Маркетинговое агентство OnAir | Генерируем прибыль, а не просто охваты" />
+    <meta name="twitter:description" content="Выстраиваем воронки продаж, которые стабильно приносят окупаемых клиентов. Бесплатный аудит маркетинга для вашего бизнеса." />
+    <meta name="twitter:image" content="https://lh3.googleusercontent.com/d/1g1ttZcG5WGfhQsE_TNG1Y2Y1ra0l_S0P" />
+
+    <!-- Favicon (встроенный SVG, грузить ничего не нужно) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ff003c'/%3E%3Ctext x='32' y='45' text-anchor='middle' font-family='Arial,Helvetica,sans-serif' font-weight='900' font-size='30' fill='%23ffffff'%3EON%3C/text%3E%3C/svg%3E" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Schema.org Professional Service Microdata -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ProfessionalService",
+        "name": "OnAir",
+        "@id": "https://hameev-onair.ru",
+        "url": "https://hameev-onair.ru",
+        "telephone": "+79178636603",
+        "priceRange": "$$$",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "ул. Спартаковская",
+          "addressLocality": "Казань",
+          "addressRegion": "Татарстан",
+          "postalCode": "420000",
+          "addressCountry": "RU"
+        },
+        "founder": { "@type": "Person", "name": "Артур Хамеев" },
+        "description": "Маркетинговое агентство полного цикла OnAir. Комплексный маркетинг с гарантией ROMI, ИИ-сквозная аналитика, реклама и упаковка.",
+        "openingHoursSpecification": {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+          "opens": "09:00",
+          "closes": "21:00"
+        }
+      }
+    </script>
+
+    <!-- Tailwind CSS (Play CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+            },
+            zIndex: { '15': '15', '20': '20', '90': '90', '100': '100' },
+          }
+        }
+      }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Site styles -->
+    <link rel="stylesheet" href="css/style.css" />
+    <script>document.documentElement.classList.add('js');</script>
+  </head>
+
+  <body class="bg-[#060606] text-gray-100 antialiased overflow-x-hidden selection:bg-[#ff003c] selection:text-white">
+
+    <div class="cursor-glow" id="custom-cursor"></div>
+
+    <!-- 3D-style network background -->
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+    <div class="relative min-h-screen bg-transparent text-gray-100 overflow-x-hidden">
+
+      <!-- ===================== HEADER ===================== -->
+      <header id="main-header" class="fixed top-0 left-0 w-full z-100 transition-all duration-500 border-b bg-transparent py-5 border-transparent">
+        <div class="max-w-7xl mx-auto px-6 flex items-center justify-between">
+
+          <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="flex items-center gap-2 font-display text-2xl font-black tracking-tighter text-[#ff003c] uppercase focus:outline-none group hover:scale-[1.02] transition-transform duration-300" aria-label="Логотип OnAir">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff003c] opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#ff003c]"></span>
+            </span>
+            <img id="logo-header" src="https://lh3.googleusercontent.com/d/1GOx57BVjuKWpH7kF9S_NzlVETO4mRWZ0" alt="OnAir" referrerpolicy="no-referrer" class="h-8 w-auto object-contain brightness-110" onerror="this.style.display='none';document.getElementById('logo-header-fallback').style.display='inline'">
+            <span id="logo-header-fallback" style="display:none">ON<span class="text-white">AIR</span></span>
+          </button>
+
+          <nav class="hidden lg:flex items-center gap-8 text-[11px] font-bold tracking-widest uppercase text-white/50">
+            <button data-scroll="services" class="hover:text-white transition duration-300 cursor-pointer">Услуги</button>
+            <button data-scroll="cases" class="hover:text-white transition duration-300 cursor-pointer">Кейсы</button>
+            <button data-scroll="about" class="hover:text-white transition duration-300 cursor-pointer">О нас</button>
+            <button data-scroll="audit-form" class="hover:text-white transition duration-300 cursor-pointer">Контакты</button>
+          </nav>
+
+          <div class="hidden lg:flex items-center gap-6">
+            <a href="tel:+79178636603" class="flex items-center gap-2 text-xs font-mono font-bold group text-white/70 hover:text-[#ff003c] transition duration-300">
+              <i data-lucide="phone" class="text-[#ff003c] group-hover:rotate-12 transition duration-300" style="width:13px;height:13px"></i>
+              <span>+7 (917) 863-66-03</span>
+            </a>
+            <button data-scroll="audit-form" class="px-5 py-2.5 bg-[#ff003c] text-white text-xs font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(255,0,60,0.3)] hover:scale-105 transition-all duration-300 cursor-pointer">
+              Получить аудит бесплатно
+            </button>
+          </div>
+
+          <button id="mobile-menu-toggle-btn" class="flex lg:hidden w-10 h-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/10 text-gray-300 hover:text-white" aria-label="Открыть мобильное меню">
+            <i data-lucide="menu" id="menu-icon" style="width:20px;height:20px"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Mobile drawer -->
+      <div id="mobile-navigation-drawer" class="hidden fixed top-[65px] left-0 w-full z-90 bg-[#060606]/95 backdrop-blur-2xl border-b border-white/10 p-6 flex-col gap-6 lg:hidden shadow-[0_15px_35px_rgba(0,0,0,0.9)]">
+        <nav class="flex flex-col gap-4 text-[11px] font-bold uppercase tracking-widest text-left">
+          <button data-scroll="services" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// Услуги</button>
+          <button data-scroll="cases" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// Кейсы</button>
+          <button data-scroll="about" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// О нас</button>
+          <button data-scroll="audit-form" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// Контакты</button>
+        </nav>
+        <div class="flex flex-col gap-4 border-t border-white/10 pt-6 text-left">
+          <a href="tel:+79178636603" class="flex items-center gap-2 text-xs font-mono font-bold text-white/70">
+            <i data-lucide="phone" class="text-[#ff003c]" style="width:13px;height:13px"></i>
+            <span>+7 (917) 863-66-03</span>
+          </a>
+          <button data-scroll="audit-form" class="w-full py-4 bg-white text-black font-bold uppercase text-xs tracking-widest hover:bg-[#ff003c] hover:text-white transition-colors duration-300 cursor-pointer">
+            Получить аудит бесплатно
+          </button>
+        </div>
+      </div>
+
+      <!-- ===================== HERO ===================== -->
+      <section id="hero" class="min-h-screen relative pt-36 pb-20 flex flex-col justify-between items-center bg-transparent">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,0,60,0.015),transparent_60%)] pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-6 relative z-10 w-full flex-grow flex flex-col justify-center text-center lg:text-left mt-8">
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div class="col-span-1 lg:col-span-8 space-y-8">
+              <div class="reveal inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/[0.03] border border-white/10 text-white/40 font-semibold">
+                <span class="w-1.5 h-1.5 bg-[#ff003c] rounded-full animate-pulse mr-1"></span>
+                МАРКЕТИНГОВОЕ АГЕНТСТВО ПОЛНОГО ЦИКЛА
+              </div>
+
+              <h1 class="reveal text-4xl sm:text-6xl md:text-[68px] font-black text-white leading-[0.95] tracking-tighter uppercase">
+                Генерируем прибыль, <br class="hidden md:inline" />
+                <span class="text-[#ff003c]">а не просто охваты</span>
+              </h1>
+
+              <p class="reveal text-white/60 text-base sm:text-lg font-light leading-relaxed max-w-2xl">
+                Комплексный маркетинг с фокусом на окупаемость (<strong class="text-white font-semibold">ROMI</strong>). Выступаем как ваш удаленный отдел маркетинга: выстраиваем воронки, которые стабильно приносят окупаемых клиентов.
+              </p>
+
+              <div class="reveal flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center">
+                <button data-scroll="audit-form" class="w-full sm:w-auto px-8 py-4 bg-white text-black font-bold uppercase text-xs tracking-widest hover:bg-[#ff003c] hover:text-white transition-colors duration-300 cursor-pointer">Увеличить выручку</button>
+                <button data-scroll="cases" class="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-[#ff003c] border border-white/10 text-white font-bold uppercase text-xs tracking-widest transition-colors duration-300 cursor-pointer">Смотреть кейсы</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Proof ribbon -->
+        <div class="w-full relative z-10 border-y border-white/10 bg-white/5 backdrop-blur-md mt-16 py-8 select-none">
+          <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center justify-between">
+            <div class="lg:col-span-6 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+              <span class="text-[11px] uppercase tracking-widest text-white/40 font-bold font-mono">Нам доверяют рост:</span>
+              <div class="flex flex-wrap justify-center sm:justify-start items-center gap-x-6 gap-y-3 text-white/50">
+                <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">Скандинавия</span>
+                <span class="text-white/20">|</span>
+                <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">АМ Медика</span>
+                <span class="text-white/20">|</span>
+                <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">Жар-Свежар</span>
+                <span class="text-white/20">|</span>
+                <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">Стомус</span>
+              </div>
+            </div>
+            <div class="lg:col-span-6 flex items-center justify-center lg:justify-end gap-6 sm:gap-10 border-t lg:border-t-0 border-white/10 pt-6 lg:pt-0">
+              <div class="text-center lg:text-right">
+                <div class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tighter">9 лет</div>
+                <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">На рынке</div>
+              </div>
+              <div class="w-px h-12 bg-white/10"></div>
+              <div class="text-center lg:text-right">
+                <div class="text-3xl sm:text-4xl lg:text-5xl font-black text-[#ff003c] tracking-tighter">200+</div>
+                <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">Проектов</div>
+              </div>
+              <div class="w-px h-12 bg-white/10"></div>
+              <div class="text-center lg:text-right">
+                <div class="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-widest uppercase leading-none py-1">100+ млн</div>
+                <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">Бюджеты в упр.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== ABOUT / FOUNDER ===================== -->
+      <section id="about" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10">
+        <div class="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#ff003c]/5 rounded-full filter blur-[120px] pointer-events-none"></div>
+        <div class="absolute bottom-0 left-1/4 w-[350px] h-[350px] bg-white/[0.02] rounded-full filter blur-[100px] pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+          <div class="mb-16">
+            <p class="reveal text-[#ff003c] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Философия партнерства</p>
+            <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1] max-w-4xl">
+              Ваша выручка — <span class="text-gradient-neon">наша зона ответственности.</span>
+            </h2>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+            <div class="reveal lg:col-span-5 relative group rounded-3xl overflow-hidden glass-panel border border-white/10 flex flex-col justify-end h-[500px] lg:h-auto min-h-[450px]">
+              <div class="absolute inset-0 bg-gradient-to-t from-[#060606] via-black/10 to-transparent z-10"></div>
+              <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent z-10"></div>
+              <img src="https://lh3.googleusercontent.com/d/1g1ttZcG5WGfhQsE_TNG1Y2Y1ra0l_S0P" referrerpolicy="no-referrer" alt="Артур Хамеев — основатель и руководитель маркетингового агентства OnAir" class="absolute inset-0 w-full h-full object-cover object-top filter grayscale contrast-[1.05] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&h=900&q=80'">
+              <div class="absolute -inset-px bg-gradient-to-t from-[#ff003c]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-15"></div>
+              <div class="relative z-20 p-8">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-sans font-bold tracking-wider bg-[#ff003c]/10 text-[#ff003c] border border-[#ff003c]/30 mb-3">
+                  <span class="w-1.5 h-1.5 rounded-full bg-[#ff003c] animate-ping"></span>
+                  Основатель агентства
+                </span>
+                <h3 class="text-2xl font-bold text-white tracking-tight">Артур Хамеев</h3>
+                <p class="text-gray-400 text-sm mt-1">Лично проектирует архитектуру ключевых воронок для каждого проекта в OnAir.</p>
+              </div>
+            </div>
+
+            <div class="lg:col-span-7 flex flex-col gap-6">
+              <div class="reveal glass-panel p-8 sm:p-10 rounded-3xl border border-white/10 relative group shrink-0">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] rounded-bl-full pointer-events-none"></div>
+                <p class="text-lg sm:text-xl text-gray-300 font-light leading-relaxed mb-6">
+                  «Суть подхода <strong class="text-white font-bold">OnAir</strong> — дать максимальный коммерческий результат любыми силами. Мы не продаем клики и лиды, мы встраиваемся в вашу команду как удаленный партнер по росту, завязывая свой доход напрямую на вашу окупаемость и ROMI».
+                </p>
+                <p class="text-[#cbd5e1] text-sm leading-relaxed">
+                  Мы берем на себя аналитику, рекламу и стратегию. Строим долгосрочные <span class="text-[#ff003c] font-semibold">win-win отношения</span>, где мы по-настоящему зарабатываем только в том случае, если стабильно и прогнозируемо зарабатываете вы.
+                </p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 grow">
+                <div class="reveal glass-panel p-6 rounded-2xl border border-white/10 hover:border-[#ff003c]/20 transition-all duration-300 flex flex-col justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center border border-white/10 mb-4 text-[#ff003c]">
+                    <i data-lucide="shield-check" style="width:20px;height:20px"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-base mb-1">Полный аудит процессов</h4>
+                    <p class="text-gray-400 text-xs leading-normal">Не запускаем слепой трафик. Исследуем воронку, анализируем ваших прямых конкурентов и находим утечки бюджетов еще до старта.</p>
+                  </div>
+                </div>
+                <div class="reveal glass-panel p-6 rounded-2xl border border-white/10 hover:border-[#ff003c]/20 transition-all duration-300 flex flex-col justify-between">
+                  <div class="w-10 h-10 rounded-xl bg-[#ff003c]/10 flex items-center justify-center border border-[#ff003c]/20 mb-4 text-[#ff003c]">
+                    <i data-lucide="heart-handshake" style="width:20px;height:20px"></i>
+                  </div>
+                  <div>
+                    <h4 class="text-white font-bold text-base mb-1">Культура win-win договора</h4>
+                    <p class="text-gray-400 text-xs leading-normal">Фиксируем четкие финансовые KPI в юридическом соглашении. Четко распределяем ответственность и контролируем ключевые метрики.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== SERVICES ===================== -->
+      <section id="services" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10">
+        <div class="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-[#ff003c]/[0.02] rounded-full filter blur-[150px] pointer-events-none"></div>
+        <div class="absolute top-1/4 right-0 w-[300px] h-[300px] bg-white/[0.01] rounded-full filter blur-[100px] pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+          <div class="mb-20 text-center lg:text-left">
+            <p class="reveal text-[#ff003c] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Отраслевая экспертиза</p>
+            <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1]">
+              Инструменты, которые <span class="text-gradient-neon">работают на вас.</span>
+            </h2>
+            <p class="reveal text-gray-400 mt-4 text-base md:text-lg max-w-2xl font-light">
+              Каждую услугу мы выстраиваем вокруг метрики ROMI. Никаких пустых отчётов — только чистый коммерческий результат и системные продажи.
+            </p>
+          </div>
+
+          <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
+        </div>
+      </section>
+
+      <!-- ===================== CASES ===================== -->
+      <section id="cases" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10">
+        <div class="absolute top-0 right-1/4 w-[450px] h-[450px] bg-white/[0.01] rounded-full filter blur-[110px] pointer-events-none"></div>
+        <div class="absolute bottom-0 left-10 w-[350px] h-[350px] bg-[#ff003c]/[0.02] rounded-full filter blur-[120px] pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+          <div class="mb-16">
+            <p class="reveal text-[#ff003c] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Доказанный результат</p>
+            <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1] max-w-4xl">
+              Цифры говорят <span class="text-gradient-neon">громче слов.</span>
+            </h2>
+            <p class="reveal text-gray-400 mt-4 text-base md:text-lg max-w-2xl font-light">
+              Ниже — реальные бизнес-метрики из наших кейсов во время инфляции рекламных ставок в 2026 году. Кликните на любую карточку, чтобы изучить шаги реализации.
+            </p>
+          </div>
+
+          <div id="cases-stack" class="space-y-6"></div>
+        </div>
+      </section>
+
+      <!-- ===================== LEAD FORM ===================== -->
+      <section id="audit-form" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10" aria-label="Бесплатный экспресс аудит">
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#ff003c]/[0.02] rounded-full filter blur-[150px] pointer-events-none"></div>
+
+        <div class="max-w-4xl mx-auto px-6 relative z-10">
+          <div class="text-center mb-16">
+            <p class="reveal text-[#ff003c] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Диалоговая конверсия</p>
+            <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1]">
+              Узнайте точки <span class="text-gradient-neon">роста вашего бизнеса.</span>
+            </h2>
+            <p class="text-gray-400 mt-4 text-sm sm:text-base max-w-xl mx-auto font-light leading-relaxed">
+              Оставьте заявку — основатель агентства Артур Хамеев лично свяжется с вами, разберёт вашу нишу и предложит план продвижения.
+            </p>
+          </div>
+
+          <div class="glass-panel-heavy rounded-3xl border border-white/10 p-8 sm:p-14 relative overflow-hidden shadow-2xl flex flex-col items-center text-center gap-8">
+            <div class="w-16 h-16 rounded-2xl bg-[#ff003c]/10 text-[#ff003c] border border-[#ff003c]/20 flex items-center justify-center">
+              <i data-lucide="sparkles" style="width:30px;height:30px"></i>
+            </div>
+            <div class="space-y-3 max-w-xl">
+              <h3 class="text-white font-black text-2xl sm:text-3xl uppercase tracking-tight">Бесплатный экспресс-аудит вашего маркетинга</h3>
+              <p class="text-gray-400 text-sm sm:text-base font-light leading-relaxed">Оставьте заявку — разберём вашу нишу, найдём точки роста и предложим план продвижения. Это ни к чему вас не обязывает.</p>
+            </div>
+
+            <!-- Кнопка открывает попап-форму Tilda с зоной/именем popup "audit" (см. инструкцию по настройке) -->
+            <a href="#popup:audit" class="inline-flex items-center justify-center gap-2 px-10 py-4 rounded-xl bg-[#ff003c] hover:bg-[#ff003c]/90 text-white font-mono text-sm font-bold uppercase tracking-wider shadow-[0_0_25px_rgba(255,0,60,0.4)] transition hover:scale-[1.02]">
+              <i data-lucide="send" style="width:16px;height:16px"></i> Получить аудит бесплатно
+            </a>
+
+            <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-mono text-gray-500">
+              <span>или свяжитесь сами:</span>
+              <a href="tel:+79178636603" class="flex items-center gap-1.5 text-white hover:text-[#ff003c] transition"><i data-lucide="phone" style="width:13px;height:13px"></i> +7 (917) 863-66-03</a>
+              <a href="https://t.me/artur_ham" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 text-white hover:text-[#ff003c] transition"><i data-lucide="send" style="width:13px;height:13px"></i> Telegram</a>
+            </div>
+
+            <p class="text-[10px] text-gray-600 max-w-md leading-normal">Нажимая «Получить аудит бесплатно», вы соглашаетесь на обработку персональных данных согласно <a href="https://onairagency.ru/privacy" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-[#ff003c] underline">Политике конфиденциальности</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== FOOTER ===================== -->
+      <footer class="bg-transparent border-t border-white/10 py-16 text-gray-400 text-xs relative overflow-hidden">
+        <div class="absolute bottom-0 left-0 w-96 h-96 bg-[#ff003c]/[0.02] rounded-full filter blur-[100px] pointer-events-none"></div>
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-12 sm:gap-8 items-start justify-between">
+            <div class="md:col-span-4 space-y-4 text-left">
+              <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="flex items-center gap-2 font-display text-lg font-black tracking-tighter text-white uppercase select-none">
+                <span class="w-2.5 h-2.5 bg-[#ff003c] rounded-full animate-pulse"></span>
+                <img src="https://lh3.googleusercontent.com/d/1GOx57BVjuKWpH7kF9S_NzlVETO4mRWZ0" alt="OnAir" referrerpolicy="no-referrer" class="h-6 w-auto object-contain brightness-110" onerror="this.style.display='none';document.getElementById('logo-footer-fallback').style.display='inline'">
+                <span id="logo-footer-fallback" style="display:none">OnAir</span>
+              </button>
+              <p class="text-gray-500 font-mono text-[10px] leading-relaxed">
+                ИП ХАМЕЕВ АРТУР РУСТЕМОВИЧ <br />
+                ИНН 164704917634 <br />
+                ОГРНИП 320169000068052 <br />
+                Копирайт © <span id="year"></span> OnAir. Все права защищены.
+              </p>
+            </div>
+            <div class="md:col-span-4 space-y-2 text-left md:text-center mt-2">
+              <h4 class="text-white font-mono font-bold uppercase tracking-wider mb-3">Информация</h4>
+              <ul class="space-y-2 text-gray-500 font-mono text-[10px] uppercase">
+                <li><a href="https://onairagency.ru/privacy" target="_blank" rel="noopener noreferrer" class="hover:text-white transition">Политика конфиденциальности</a></li>
+                <li><a href="#terms" class="hover:text-white transition">Пользовательское соглашение</a></li>
+                <li><a href="#map" class="hover:text-white transition">Карта сайта</a></li>
+              </ul>
+            </div>
+            <div class="md:col-span-4 space-y-4 text-left md:text-right">
+              <h4 class="text-white font-mono font-bold uppercase tracking-wider mb-2 md:text-right">Контакты</h4>
+              <div class="space-y-2 font-mono">
+                <div>
+                  <a href="tel:+79178636603" class="block text-[#ff003c] font-bold text-sm tracking-wide hover:underline leading-none">+7 (917) 863-66-03</a>
+                  <span class="text-[10px] text-gray-600">Звонок бесплатный по РФ</span>
+                </div>
+                <div><a href="mailto:hameevartur@mail.ru" class="text-gray-300 hover:text-white transition text-xs">hameevartur@mail.ru</a></div>
+              </div>
+              <div class="flex flex-wrap gap-2 pt-2 justify-start md:justify-end">
+                <a href="https://t.me/artur_ham" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-[#ff003c]/30 hover:bg-[#ff003c]/5 text-white transition text-[10px] font-mono flex items-center gap-1">
+                  <i data-lucide="send" class="text-[#ff003c]" style="width:11px;height:11px"></i><span>Telegram</span>
+                </a>
+                <a href="https://wa.me/79178636603" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-lg bg-white/[0.02] border border-white/5 hover:border-green-500/20 hover:bg-green-500/5 text-white transition text-[10px] font-mono flex items-center gap-1">
+                  <i data-lucide="circle-check" class="text-green-500" style="width:11px;height:11px"></i><span>WhatsApp</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ===================== SCRIPTS ===================== -->
+    <script src="js/data.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
 
