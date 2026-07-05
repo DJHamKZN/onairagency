@@ -61,22 +61,8 @@
       }
     </script>
 
-    <!-- Tailwind CSS (Play CDN) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-              display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-              mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
-            },
-            zIndex: { '15': '15', '20': '20', '90': '90', '100': '100' },
-          }
-        }
-      }
-    </script>
+    <!-- Tailwind CSS — precompiled (see tailwind.config.js). Rebuild: npm run build:css -->
+    <link rel="stylesheet" href="css/tailwind.css" />
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -87,6 +73,8 @@
   </head>
 
   <body class="bg-[#060606] text-gray-100 antialiased overflow-x-hidden selection:bg-[#ff003c] selection:text-white">
+
+    <a href="#hero" class="skip-link">Перейти к содержимому</a>
 
     <div class="cursor-glow" id="custom-cursor"></div>
 
@@ -125,7 +113,7 @@
             </button>
           </div>
 
-          <button id="mobile-menu-toggle-btn" class="flex lg:hidden w-10 h-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/10 text-gray-300 hover:text-white" aria-label="Открыть мобильное меню">
+          <button id="mobile-menu-toggle-btn" class="flex lg:hidden w-11 h-11 items-center justify-center rounded-xl bg-white/[0.03] border border-white/10 text-gray-300 hover:text-white" aria-label="Открыть мобильное меню" aria-controls="mobile-navigation-drawer" aria-expanded="false">
             <i data-lucide="menu" id="menu-icon" style="width:20px;height:20px"></i>
           </button>
         </div>
@@ -157,7 +145,7 @@
         <div class="max-w-7xl mx-auto px-6 relative z-10 w-full flex-grow flex flex-col justify-center text-center lg:text-left mt-8">
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div class="col-span-1 lg:col-span-8 space-y-8">
-              <div class="reveal inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/[0.03] border border-white/10 text-white/40 font-semibold">
+              <div class="reveal inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/[0.03] border border-white/10 text-white/60 font-semibold">
                 <span class="w-1.5 h-1.5 bg-[#ff003c] rounded-full animate-pulse mr-1"></span>
                 МАРКЕТИНГОВОЕ АГЕНТСТВО ПОЛНОГО ЦИКЛА
               </div>
@@ -183,7 +171,7 @@
         <div class="w-full relative z-10 border-y border-white/10 bg-white/5 backdrop-blur-md mt-16 py-8 select-none">
           <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center justify-between">
             <div class="lg:col-span-6 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-              <span class="text-[11px] uppercase tracking-widest text-white/40 font-bold font-mono">Нам доверяют рост:</span>
+              <span class="text-[11px] uppercase tracking-widest text-white/60 font-bold font-mono">Нам доверяют рост:</span>
               <div class="flex flex-wrap justify-center sm:justify-start items-center gap-x-6 gap-y-3 text-white/50">
                 <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">Скандинавия</span>
                 <span class="text-white/20">|</span>
@@ -197,17 +185,17 @@
             <div class="lg:col-span-6 flex items-center justify-center lg:justify-end gap-6 sm:gap-10 border-t lg:border-t-0 border-white/10 pt-6 lg:pt-0">
               <div class="text-center lg:text-right">
                 <div class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tighter">9 лет</div>
-                <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">На рынке</div>
+                <div class="text-[10px] uppercase text-white/60 font-mono tracking-wider font-bold mt-1">На рынке</div>
               </div>
               <div class="w-px h-12 bg-white/10"></div>
               <div class="text-center lg:text-right">
                 <div class="text-3xl sm:text-4xl lg:text-5xl font-black text-[#ff003c] tracking-tighter">200+</div>
-                <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">Проектов</div>
+                <div class="text-[10px] uppercase text-white/60 font-mono tracking-wider font-bold mt-1">Проектов</div>
               </div>
               <div class="w-px h-12 bg-white/10"></div>
               <div class="text-center lg:text-right">
                 <div class="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-widest uppercase leading-none py-1">100+ млн</div>
-                <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">Бюджеты в упр.</div>
+                <div class="text-[10px] uppercase text-white/60 font-mono tracking-wider font-bold mt-1">Бюджеты в упр.</div>
               </div>
             </div>
           </div>
@@ -231,7 +219,7 @@
             <div class="reveal lg:col-span-5 relative group rounded-3xl overflow-hidden glass-panel border border-white/10 flex flex-col justify-end h-[500px] lg:h-auto min-h-[450px]">
               <div class="absolute inset-0 bg-gradient-to-t from-[#060606] via-black/10 to-transparent z-10"></div>
               <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent z-10"></div>
-              <img src="https://lh3.googleusercontent.com/d/1g1ttZcG5WGfhQsE_TNG1Y2Y1ra0l_S0P" referrerpolicy="no-referrer" alt="Артур Хамеев — основатель и руководитель маркетингового агентства OnAir" class="absolute inset-0 w-full h-full object-cover object-top filter grayscale contrast-[1.05] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&h=900&q=80'">
+              <img src="https://lh3.googleusercontent.com/d/1g1ttZcG5WGfhQsE_TNG1Y2Y1ra0l_S0P" referrerpolicy="no-referrer" loading="lazy" decoding="async" alt="Артур Хамеев — основатель и руководитель маркетингового агентства OnAir" class="absolute inset-0 w-full h-full object-cover object-top filter grayscale contrast-[1.05] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&h=900&q=80'">
               <div class="absolute -inset-px bg-gradient-to-t from-[#ff003c]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-15"></div>
               <div class="relative z-20 p-8">
                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-sans font-bold tracking-wider bg-[#ff003c]/10 text-[#ff003c] border border-[#ff003c]/30 mb-3">
@@ -319,6 +307,20 @@
         </div>
       </section>
 
+      <!-- ===================== TESTIMONIALS (появляется только когда заполнен TESTIMONIALS_DATA в js/data.js) ===================== -->
+      <section id="testimonials" class="hidden py-24 relative overflow-hidden bg-transparent border-t border-white/10" aria-label="Отзывы клиентов">
+        <div class="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-[#ff003c]/[0.02] rounded-full filter blur-[120px] pointer-events-none"></div>
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+          <div class="mb-16">
+            <p class="reveal text-[#ff003c] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Голос клиентов</p>
+            <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1] max-w-4xl">
+              Что говорят <span class="text-gradient-neon">наши партнёры.</span>
+            </h2>
+          </div>
+          <div id="testimonials-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"></div>
+        </div>
+      </section>
+
       <!-- ===================== LEAD FORM ===================== -->
       <section id="audit-form" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10" aria-label="Бесплатный экспресс аудит">
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#ff003c]/[0.02] rounded-full filter blur-[150px] pointer-events-none"></div>
@@ -348,13 +350,13 @@
               <i data-lucide="send" style="width:16px;height:16px"></i> Получить аудит бесплатно
             </a>
 
-            <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-mono text-gray-500">
+            <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-mono text-gray-400">
               <span>или свяжитесь сами:</span>
               <a href="tel:+79178636603" class="flex items-center gap-1.5 text-white hover:text-[#ff003c] transition"><i data-lucide="phone" style="width:13px;height:13px"></i> +7 (917) 863-66-03</a>
               <a href="https://t.me/artur_ham" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 text-white hover:text-[#ff003c] transition"><i data-lucide="send" style="width:13px;height:13px"></i> Telegram</a>
             </div>
 
-            <p class="text-[10px] text-gray-600 max-w-md leading-normal">Нажимая «Получить аудит бесплатно», вы соглашаетесь на обработку персональных данных согласно <a href="https://onairagency.ru/privacy" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-[#ff003c] underline">Политике конфиденциальности</a>.</p>
+            <p class="text-[10px] text-gray-400 max-w-md leading-normal">Нажимая «Получить аудит бесплатно», вы соглашаетесь на обработку персональных данных согласно <a href="https://onairagency.ru/privacy" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-[#ff003c] underline">Политике конфиденциальности</a>.</p>
           </div>
         </div>
       </section>
@@ -367,10 +369,10 @@
             <div class="md:col-span-4 space-y-4 text-left">
               <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="flex items-center gap-2 font-display text-lg font-black tracking-tighter text-white uppercase select-none">
                 <span class="w-2.5 h-2.5 bg-[#ff003c] rounded-full animate-pulse"></span>
-                <img src="https://lh3.googleusercontent.com/d/1GOx57BVjuKWpH7kF9S_NzlVETO4mRWZ0" alt="OnAir" referrerpolicy="no-referrer" class="h-6 w-auto object-contain brightness-110" onerror="this.style.display='none';document.getElementById('logo-footer-fallback').style.display='inline'">
+                <img src="https://lh3.googleusercontent.com/d/1GOx57BVjuKWpH7kF9S_NzlVETO4mRWZ0" alt="OnAir" referrerpolicy="no-referrer" loading="lazy" decoding="async" class="h-6 w-auto object-contain brightness-110" onerror="this.style.display='none';document.getElementById('logo-footer-fallback').style.display='inline'">
                 <span id="logo-footer-fallback" style="display:none">OnAir</span>
               </button>
-              <p class="text-gray-500 font-mono text-[10px] leading-relaxed">
+              <p class="text-gray-400 font-mono text-[10px] leading-relaxed">
                 ИП ХАМЕЕВ АРТУР РУСТЕМОВИЧ <br />
                 ИНН 164704917634 <br />
                 ОГРНИП 320169000068052 <br />
@@ -379,7 +381,7 @@
             </div>
             <div class="md:col-span-4 space-y-2 text-left md:text-center mt-2">
               <h4 class="text-white font-mono font-bold uppercase tracking-wider mb-3">Информация</h4>
-              <ul class="space-y-2 text-gray-500 font-mono text-[10px] uppercase">
+              <ul class="space-y-2 text-gray-400 font-mono text-[10px] uppercase">
                 <li><a href="https://onairagency.ru/privacy" target="_blank" rel="noopener noreferrer" class="hover:text-white transition">Политика конфиденциальности</a></li>
                 <li><a href="#terms" class="hover:text-white transition">Пользовательское соглашение</a></li>
                 <li><a href="#map" class="hover:text-white transition">Карта сайта</a></li>
@@ -390,7 +392,7 @@
               <div class="space-y-2 font-mono">
                 <div>
                   <a href="tel:+79178636603" class="block text-[#ff003c] font-bold text-sm tracking-wide hover:underline leading-none">+7 (917) 863-66-03</a>
-                  <span class="text-[10px] text-gray-600">Звонок бесплатный по РФ</span>
+                  <span class="text-[10px] text-gray-400">Звонок бесплатный по РФ</span>
                 </div>
                 <div><a href="mailto:hameevartur@mail.ru" class="text-gray-300 hover:text-white transition text-xs">hameevartur@mail.ru</a></div>
               </div>

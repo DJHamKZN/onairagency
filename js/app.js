@@ -37,10 +37,10 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const stack = document.getElementById('cases-stack');
   stack.innerHTML = CASES_DATA.map((p, idx) => `
     <article data-case="${p.id}" class="reveal case-card group rounded-3xl border transition-all duration-500 overflow-hidden glass-panel border-white/10 hover:border-white/20 hover:bg-white/[0.02]">
-      <div class="case-header p-8 sm:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8 cursor-pointer relative select-none" role="button">
+      <div class="case-header p-8 sm:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8 cursor-pointer relative select-none" role="button" tabindex="0" aria-expanded="false" aria-label="Кейс ${esc(p.client)} — раскрыть подробности">
         <div class="space-y-4 max-w-xl">
           <div class="flex flex-wrap gap-2">
-            ${p.tags.map(t => `<span class="case-tag text-[9px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-full border bg-white/[0.02] text-gray-400 border-white/10 font-semibold">${esc(t)}</span>`).join('')}
+            ${p.tags.map(t => `<span class="case-tag text-[10px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-full border bg-white/[0.02] text-gray-400 border-white/10 font-semibold">${esc(t)}</span>`).join('')}
           </div>
           <div>
             <h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none group-hover:text-gradient-neon transition-all duration-300">${esc(p.client)}</h3>
@@ -81,8 +81,10 @@ document.getElementById('year').textContent = new Date().getFullYear();
   function setOpen(card, open){
     const drawer = card.querySelector('.case-drawer');
     const chevron = card.querySelector('.case-chevron');
+    const header = card.querySelector('.case-header');
     const tags = card.querySelectorAll('.case-tag');
     drawer.style.display = open ? 'block' : 'none';
+    if (header) header.setAttribute('aria-expanded', open ? 'true' : 'false');
     card.classList.toggle('glass-panel-neon', open);
     card.classList.toggle('ring-1', open);
     card.classList.toggle('ring-[#ff003c]/30', open);
@@ -109,14 +111,44 @@ document.getElementById('year').textContent = new Date().getFullYear();
     });
   }
   cards.forEach(card => {
-    card.querySelector('.case-header').addEventListener('click', () => {
+    const header = card.querySelector('.case-header');
+    const toggle = () => {
       const isOpen = card.querySelector('.case-drawer').style.display === 'block';
       cards.forEach(c => { if (c !== card) setOpen(c, false); });
       setOpen(card, !isOpen);
+    };
+    header.addEventListener('click', toggle);
+    header.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') { e.preventDefault(); toggle(); }
     });
   });
   // open first by default
   setOpen(cards[0], true);
+})();
+
+/* ---- Render testimonials (section stays hidden until data exists) ---- */
+(function renderTestimonials(){
+  const section = document.getElementById('testimonials');
+  const grid = document.getElementById('testimonials-grid');
+  if (!section || !grid || typeof TESTIMONIALS_DATA === 'undefined' || !TESTIMONIALS_DATA.length) return;
+  grid.innerHTML = TESTIMONIALS_DATA.map(t => {
+    const rating = Math.max(0, Math.min(5, Number(t.rating) || 0));
+    const stars = rating
+      ? `<div class="flex gap-1 mb-4" aria-label="Оценка ${rating} из 5">${
+          Array.from({length:5}, (_,i) => `<i data-lucide="star" class="${i < rating ? 'text-[#ff003c]' : 'text-white/20'}" style="width:16px;height:16px;${i < rating ? 'fill:currentColor' : ''}"></i>`).join('')
+        }</div>`
+      : '';
+    return `
+    <figure class="reveal glass-panel border border-white/10 rounded-3xl p-8 flex flex-col justify-between hover:border-[#ff003c]/30 transition-all duration-300">
+      ${stars}
+      <blockquote class="text-white/80 text-sm leading-relaxed font-light mb-6">«${esc(t.quote)}»</blockquote>
+      <figcaption class="mt-auto">
+        <div class="text-white font-bold text-sm">${esc(t.name)}</div>
+        <div class="text-[#ff003c] text-xs font-mono mt-0.5">${esc(t.role)}</div>
+      </figcaption>
+    </figure>`;
+  }).join('');
+  section.classList.remove('hidden');
 })();
 
 /* ---- Navigation, header, mobile menu ---- */
@@ -139,12 +171,16 @@ document.getElementById('year').textContent = new Date().getFullYear();
     open = !open;
     drawer.classList.toggle('hidden', !open);
     drawer.classList.toggle('flex', open);
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.setAttribute('aria-label', open ? 'Закрыть мобильное меню' : 'Открыть мобильное меню');
     menuIcon.setAttribute('data-lucide', open ? 'x' : 'menu');
     lucide.createIcons();
   });
 
   function scrollToSection(id){
     open = false; drawer.classList.add('hidden'); drawer.classList.remove('flex');
+    toggle.setAttribute('aria-expanded','false');
+    toggle.setAttribute('aria-label','Открыть мобильное меню');
     menuIcon.setAttribute('data-lucide','menu'); lucide.createIcons();
     const el = document.getElementById(id);
     if (el){
@@ -180,6 +216,8 @@ document.getElementById('year').textContent = new Date().getFullYear();
 (function network(){
   const canvas = document.getElementById('bg-canvas');
   const ctx = canvas.getContext('2d');
+  // Respect reduced-motion: skip the animated constellation entirely (also hidden via CSS)
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   let W, H, dpr, COUNT;
   let parts = [];
   const mouse = { x:0, y:0, tx:0, ty:0 };
@@ -217,6 +255,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const THRESH = 150;                            // connection radius
   const MARGIN = 40;
   let last = performance.now();
+  let rafId = null;
   function frame(now){
     const dt = Math.min(0.05, (now - last)/1000); last = now;
     const t = now/1000;
@@ -266,9 +305,13 @@ document.getElementById('year').textContent = new Date().getFullYear();
     }
 
     ctx.globalCompositeOperation = 'source-over';
-    requestAnimationFrame(frame);
+    rafId = requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  // Pause the render loop when the tab is hidden to save CPU/battery
+  function start(){ if (rafId === null){ last = performance.now(); rafId = requestAnimationFrame(frame); } }
+  function stop(){ if (rafId !== null){ cancelAnimationFrame(rafId); rafId = null; } }
+  document.addEventListener('visibilitychange', () => { document.hidden ? stop() : start(); });
+  start();
 })();
 
 /* ---- Init icons ---- */
