@@ -1,0 +1,39 @@
+{
+  "name": "onair-crm-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Локальный прототип пресейл-CRM ON AIR на синтетических данных. Не для реальных клиентских данных.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev:server": "node --disable-warning=ExperimentalWarning --import tsx --watch server/main.ts",
+    "dev:client": "vite",
+    "build": "vite build",
+    "start": "node --disable-warning=ExperimentalWarning --import tsx server/main.ts",
+    "seed": "node --disable-warning=ExperimentalWarning --import tsx server/cli.ts seed",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --disable-warning=ExperimentalWarning --import tsx --test --test-reporter=spec tests/*.test.ts",
+    "test:e2e": "playwright test",
+    "restore-check": "node --disable-warning=ExperimentalWarning --import tsx server/cli.ts restore-check"
+  },
+  "dependencies": {
+    "@pdf-lib/fontkit": "1.1.1",
+    "docx": "9.5.1",
+    "pdf-lib": "1.17.1",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.18.6",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "@vitejs/plugin-react": "5.0.3",
+    "tsx": "4.20.5",
+    "typescript": "5.9.3",
+    "vite": "7.3.7"
+  }
+}
