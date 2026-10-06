@@ -55,10 +55,10 @@ export class Service {
     const r = checkActingRole(user, role);
     if (!r.ok) throw new AccessError(403, r.message);
     if (role !== 'owner' && role !== 'presale_pm') throw new AccessError(403, 'Создавать запросы могут владелец и проджект пресейла');
-    const company = this.repo.company(input.companyId);
-    if (!company) throw new DomainError('validation', 'Выберите компанию или создайте новую', ['Компания']);
     const ctx = this.ctx(user, role);
+    // Сначала доменная проверка — она возвращает полный список недостающего, затем проверка ссылки на компанию.
     const { opp, events } = createOpportunity({ ...input, isDemo: input.isDemo ?? false }, ctx);
+    if (!this.repo.company(input.companyId)) throw new DomainError('validation', 'Компания не найдена — выберите существующую или создайте новую', ['Компания']);
     if (role === 'presale_pm' && !opp.presalePmUserId) opp.presalePmUserId = user.id;
     tx(this.repo.db, () => {
       this.repo.insertOpportunity(opp);

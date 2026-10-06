@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { approvalBlockers, createOpportunity } from '../src/domain/commands';
+import { approvalBlockers, createOpportunity, workItemIssues } from '../src/domain/commands';
 import { exportClientProposal, findForbiddenKeys } from '../src/domain/clientExport';
 import { computeEstimate } from '../src/domain/economics';
 import { handoffBlockers, packageBlockers } from '../src/domain/launch';
@@ -176,6 +176,22 @@ describe('Утверждение экономики (12)', () => {
   });
 });
 
+describe('Работы (8)', () => {
+  it('8: работа без основания, объёма или приёмки не проходит в КП; основание-находка должна быть подтверждена', () => {
+    const s = caseCReady();
+    const id = s.ids.C;
+    s.run(id, { type: 'addWorkItem', payload: { title: 'SEO-продвижение из каталога', basis: null, expectedResult: null, quantity: null, unit: null, acceptanceCriterion: null, recurrence: 'monthly', assigneeUserId: null } });
+    const o = s.get(id);
+    const w = o.workItems.at(-1)!;
+    const issues = approvalBlockers(o, { ...o.proposals[0], content: { ...o.proposals[0].content, workItemIds: [...o.proposals[0].content.workItemIds, w.id] } });
+    for (const re of [/нет основания/, /нет ожидаемого результата/, /нет измеримого объёма/, /нет критерия приёмки/]) assert.ok(issues.some((i) => re.test(i)), String(re));
+    // основание — непроверенная находка
+    s.run(s.ids.B, { type: 'addWorkItem', payload: { title: 'Доработка формы', basis: { type: 'finding', findingId: s.get(s.ids.B).findings[0].id }, expectedResult: 'Форма доставляет заявки', quantity: 1, unit: 'форма', acceptanceCriterion: 'Тестовая заявка получена клиентом', recurrence: 'one_time', assigneeUserId: null } });
+    const B = s.get(s.ids.B);
+    assert.ok(workItemIssues(B, B.workItems.at(-1)!).some((i) => /не подтверждено доказательством/.test(i)));
+  });
+});
+
 describe('Версии КП (13, 14)', () => {
   it('13: генерация документа не фиксирует отправку; отправка требует точной версии', () => {
     const s = approveC();
@@ -226,8 +242,6 @@ describe('Клиентский экспорт (15)', () => {
     const s = approveC();
     const o = s.get(s.ids.C);
     o.commissionRules[0].label = 'SENTINEL_COMMISSION_LABEL';
-    o.findings.push({ ...({} as never) });
-    o.findings.pop();
     o.estimates[0].lines[0].label = 'SENTINEL_LINE_LABEL';
     o.tasks.push({ id: 't', createdAt: '', createdBy: 'u_owner', updatedAt: '', updatedBy: '', rev: 1, isDemo: true, title: 'SENTINEL_TASK', assigneeUserId: 'u_pm', role: null, due: null, status: 'open', blocker: false, kind: 'other', cancelledReason: null });
     const exp = exportClientProposal(o, s.repo.company(o.companyId)!, o.proposals[0]);
