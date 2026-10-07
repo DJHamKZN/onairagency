@@ -3,10 +3,12 @@
  * Сервер вызывает их ПОСЛЕ проверки роли и назначения (см. permissions.ts) и сохраняет результат
  * с проверкой версии записи.
  */
-import { buildMaterialSnapshot, diffMaterial, snapshotHash, type MaterialSnapshot } from './approval';
+import { buildMaterialSnapshot, snapshotHash, worksOf } from './approval';
 import { clientExportReadiness, emptyAudit, externalOverreach, supportBlockers, validateModule } from './audit';
 import { demoParse } from './demoParser';
-import { computeEstimate } from './economics';
+import { computeFor } from './economics';
+import { exportClientAudit, exportInternalAudit } from './clientExport';
+import { hashOf } from './hash';
 import { DomainError, today, type Ctx } from './errors';
 import { FACT_KEY_LABELS, SINGLE_KEYS, formatFactValue } from './labels';
 import {
@@ -15,7 +17,7 @@ import {
 } from './launch';
 import { STAGE_LABELS, WORK_STAGES, moveBlockers, stageIndex } from './stages';
 import type {
-  AgencyPromise, Approval, AuditFinding, AuditModule, BaseRecord, Budget, ChecklistKey, Clarification, CommissionRule,
+  AgencyPromise, Approval, AuditFinding, AuditModule, BaseRecord, Budget, ChecklistKey, ChecklistStatus, Clarification, CommissionRule,
   CostLine, EstimateVersion, Fact, FactKey, FactStatus, FactValue, ImpactArea, LeadPathLevel, LeadPathStatus, NextStep,
   Opportunity, PromiseCategory, ProposalContent, ProposalVersion, ProposedChange, RouteType, Source, SourceKind, Task, WorkItem, WorkStage,
 } from './types';
@@ -34,7 +36,7 @@ export interface CommandResult {
   opp: Opportunity;
   events: EventDraft[];
   /** Снимки, которые сервер должен сохранить в append-only таблицу. */
-  snapshots: { id: string; kind: 'approval' | 'proposal_sent'; hash: string; data: unknown }[];
+  snapshots: { id: string; kind: import('./types').Snapshot['kind']; hash: string; data: unknown }[];
   /** Побочные эффекты вне агрегата (например, создать связанную возможность). */
   effects: { type: 'createLinkedDiagnostic'; title: string }[];
 }
@@ -162,6 +164,8 @@ export type Command =
   | { type: 'addSource'; payload: { kind: SourceKind; title: string; declaredCompany: string | null; receivedAt: string | null; text: string; link: string | null; originalFilename: string | null; replacesSourceId: string | null } }
   | { type: 'decideSourceAttribution'; payload: { sourceId: string; accept: boolean; comment: string } }
   | { type: 'parseSource'; payload: { sourceId: string } }
+  | { type: 'importStructuredProposals'; payload: { sourceId: string; items: StructuredItem[] } }
+  | { type: 'createMissingQuestions'; payload: Record<string, never> }
   | { type: 'updateSourceText'; payload: { sourceId: string; text: string; reason: string } }
   | { type: 'decideProposedChange'; payload: { id: string; accept: boolean; comment?: string } }
   | { type: 'resolveConflict'; payload: { conflictId: string; choice: 'keep_existing' | 'take_proposed' | 'needs_clarification'; comment: string } }
@@ -186,14 +190,15 @@ export type Command =
   | { type: 'addFinding'; payload: Partial<AuditFinding> & { title: string; module: AuditFinding['module']; observation: string } }
   | { type: 'updateFinding'; payload: { id: string; patch: Partial<AuditFinding> } }
   | { type: 'reviewEvidence'; payload: { findingId: string; supportsClaim: boolean; comment: string } }
-  | { type: 'recordDeliverableGenerated'; payload: { kind: 'client_brief_pdf' | 'client_detailed_docx' | 'internal_docx' } }
+  | { type: 'saveAuditDeliverables'; payload: { limitationsNote: string | null } }
   // работы и экономика
   | { type: 'addWorkItem'; payload: Omit<WorkItem, keyof BaseRecord> }
   | { type: 'updateWorkItem'; payload: { id: string; patch: Partial<Omit<WorkItem, keyof BaseRecord>> } }
   | { type: 'removeWorkItem'; payload: { id: string } }
   | { type: 'upsertCostLine'; payload: { estimateId: string; line: CostLine } }
+  | { type: 'verifyCostLine'; payload: { estimateId: string; lineId: string; comment: string } }
   | { type: 'removeCostLine'; payload: { estimateId: string; lineId: string } }
-  | { type: 'updateEstimate'; payload: { estimateId: string; patch: Partial<Pick<EstimateVersion, 'commissionRuleId' | 'noCommissionConfirmed' | 'targetMarginBp' | 'targetMarginSource' | 'rounding' | 'taxModel' | 'priceMode' | 'manualPriceKop' | 'discount' | 'externalBudgets'>> } }
+  | { type: 'updateEstimate'; payload: { estimateId: string; patch: Partial<Pick<EstimateVersion, 'commissionRuleId' | 'noCommissionConfirmed' | 'targetMarginBp' | 'targetMarginSource' | 'rounding' | 'taxModel' | 'priceMode' | 'manualPriceKop' | 'manualMonthlyPriceKop' | 'discount' | 'externalBudgets'>> } }
   | { type: 'upsertCommissionRule'; payload: Omit<CommissionRule, keyof BaseRecord> & { id?: string } }
   // КП
   | { type: 'createProposalDraft'; payload: Record<string, never> }
@@ -206,7 +211,8 @@ export type Command =
   | { type: 'addClientQuestion'; payload: { proposalId: string; text: string; nextContact: string | null } }
   | { type: 'recordProposalGenerated'; payload: { proposalId: string; format: string } }
   // запуск
-  | { type: 'setChecklistItem'; payload: { key: ChecklistKey; status: 'open' | 'done' | 'not_applicable'; note: string | null; naReason: string | null } }
+  | { type: 'setChecklistItem'; payload: { key: ChecklistKey; status: Exclude<ChecklistStatus, 'deviation_accepted'>; note: string | null; naReason: string | null } }
+  | { type: 'decideDeviation'; payload: { key: ChecklistKey; reason: string } }
   | { type: 'setPayment'; payload: { status: Opportunity['launch']['payment']['status']; note: string | null } }
   | { type: 'recordLinkShared'; payload: Record<string, never> }
   | { type: 'handoffDecision'; payload: { decision: 'accepted' | 'returned'; remarks: string | null } }
@@ -214,6 +220,17 @@ export type Command =
   | { type: 'handOff'; payload: Record<string, never> };
 
 export type CommandType = Command['type'];
+
+/** Элемент импортированного структурированного результата (например, подготовленного человеком во внешнем инструменте). */
+export interface StructuredItem {
+  kind: ProposedChange['kind'];
+  key?: FactKey | null;
+  value: FactValue;
+  excerpt: string;
+  timecode?: string | null;
+  note?: string | null;
+  addressedToRole?: string | null;
+}
 
 export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { companyName: string | null } = { companyName: null }): CommandResult {
   const opp = clone(input);
@@ -223,7 +240,7 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
   const ev = (entityType: string, entityId: string, action: string, before: unknown, after: unknown, reason: string | null = null, override = false) =>
     events.push({ entityType, entityId, action, before, after, reason, override });
 
-  const readOnlyAllowed: CommandType[] = ['recordProposalGenerated', 'recordDeliverableGenerated'];
+  const readOnlyAllowed: CommandType[] = ['recordProposalGenerated'];
   if (!readOnlyAllowed.includes(cmd.type) && cmd.type !== 'resume') {
     if (opp.stage === 'paused' && !['updateBasics', 'addSource', 'addTask', 'setTaskStatus', 'close'].includes(cmd.type))
       throw new DomainError('paused', 'Возможность на паузе. Верните её с паузы, чтобы продолжить работу');
@@ -404,19 +421,51 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
       const s = find(opp.sources, cmd.payload.sourceId, 'Источник');
       if (s.status === 'quarantined') throw new DomainError('quarantined', 'Источник на карантине: сначала решите, относится ли он к этой возможности', [s.quarantineReason ?? '']);
       if (s.status !== 'active') throw new DomainError('validation', 'Разбирать можно только актуальный источник');
-      const parsed = demoParse(s.text);
-      for (const p of parsed) {
-        const pc: ProposedChange = {
-          ...meta(ctx, opp.isDemo, 'pc'),
-          sourceId: s.id, kind: p.kind, key: p.key, value: p.value, excerpt: p.excerpt, timecode: p.timecode, note: p.note,
-          status: 'pending', decision: null, addressedToRole: p.addressedToRole,
-        };
-        opp.proposedChanges.push(pc);
-      }
+      const r = addProposals(opp, s, demoParse(s.text).map((x) => ({ ...x, origin: 'keyword_rules' as const })), ctx);
       s.parsedAt = ctx.now;
       touch(s, ctx);
       touch(opp, ctx);
-      ev('Source', s.id, 'demo_parsed', null, { proposals: parsed.length }, 'Демо-разбор по правилам (не AI)');
+      ev('Source', s.id, 'keyword_parsed', null, r, 'Разбор по ключевым словам (не ИИ). Повторный разбор не создаёт дублей');
+      break;
+    }
+    case 'importStructuredProposals': {
+      const s = find(opp.sources, cmd.payload.sourceId, 'Источник');
+      if (s.status !== 'active') throw new DomainError('validation', 'Импортировать можно только к актуальному источнику (не на карантине)');
+      const items = cmd.payload.items;
+      if (!Array.isArray(items) || !items.length) throw new DomainError('validation', 'Нет элементов для импорта');
+      if (items.length > 200) throw new DomainError('validation', 'Не больше 200 элементов за раз');
+      const kinds = ['fact', 'metric', 'budget_mention', 'client_wish', 'promise_candidate', 'conditional', 'clarification'];
+      const errors: string[] = [];
+      items.forEach((it, i) => {
+        if (!it || typeof it !== 'object') { errors.push(`#${i + 1}: не объект`); return; }
+        if (!kinds.includes(it.kind)) errors.push(`#${i + 1}: неизвестный kind «${String(it.kind)}»`);
+        if (it.kind === 'fact' && (!it.key || !SINGLE_KEYS.has(it.key))) errors.push(`#${i + 1}: для kind=fact нужен key из списка полей карточки`);
+        if (typeof it.excerpt !== 'string' || !it.excerpt.trim()) errors.push(`#${i + 1}: нужна цитата из источника (excerpt)`);
+        if (it.value === undefined || it.value === null || (typeof it.value === 'string' && !it.value.trim())) errors.push(`#${i + 1}: пустое значение`);
+      });
+      if (errors.length) throw new DomainError('validation', 'Структурированный результат не прошёл проверку — ничего не импортировано', errors.slice(0, 20));
+      const r = addProposals(opp, s, items.map((it) => ({
+        kind: it.kind, key: it.kind === 'fact' ? it.key! : it.kind === 'metric' || it.kind === 'budget_mention' || it.kind === 'client_wish' ? it.kind : null,
+        value: it.value, excerpt: it.excerpt.trim(), timecode: it.timecode ?? null, note: it.note?.trim() || 'Импорт структурированного результата (источник результата не проверялся)',
+        addressedToRole: it.addressedToRole ?? null, origin: 'structured_import' as const,
+      })), ctx);
+      touch(opp, ctx);
+      ev('Source', s.id, 'structured_imported', null, r, 'Импорт структурированного результата; каждое предложение принимает человек');
+      break;
+    }
+    case 'createMissingQuestions': {
+      const missing = missingInfo(opp);
+      let created = 0;
+      for (const m of missing) {
+        if (m.hasOpenQuestion) continue;
+        opp.clarifications.push({
+          ...meta(ctx, opp.isDemo, 'clr'), question: m.question, addressedToRole: m.addressedToRole, impacts: m.impacts, sourceId: null,
+          status: 'open', answer: null, factKey: m.key,
+        });
+        created++;
+      }
+      touch(opp, ctx);
+      ev('Clarification', opp.id, 'missing_questions_created', null, { created }, 'Вопросы по незаполненным значимым полям');
       break;
     }
     case 'updateSourceText': {
@@ -715,13 +764,28 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
       ev('AuditFinding', f.id, 'evidence_reviewed', before, f.verification, cmd.payload.comment);
       break;
     }
-    case 'recordDeliverableGenerated': {
-      const d = opp.audit.deliverables.find((x) => x.kind === cmd.payload.kind);
-      if (!d) throw new DomainError('validation', 'Документ полного аудита не предусмотрен: полный аудит не включён');
-      d.lastGeneratedAt = ctx.now;
-      d.lastGeneratedBy = ctx.userId;
+    case 'saveAuditDeliverables': {
+      if (!opp.audit.fullMarketingAudit || !opp.audit.deliverables.length)
+        throw new DomainError('validation', 'Три документа сохраняются для полного аудита. Включите полный аудит в маршруте диагностики');
+      const company = { id: opp.companyId, name: env.companyName ?? '' } as never;
+      const setNumber = Math.max(0, ...opp.audit.deliverables.map((d) => d.setNumber ?? 0)) + 1;
+      const docs = {
+        client_brief_pdf: { kind: 'audit_brief' as const, data: exportClientAudit(opp, company, 'brief') },
+        client_detailed_docx: { kind: 'audit_client' as const, data: exportClientAudit(opp, company, 'detailed') },
+        internal_docx: { kind: 'audit_internal' as const, data: exportInternalAudit(opp) },
+      };
+      for (const d of opp.audit.deliverables) {
+        const doc = docs[d.kind];
+        const id = ctx.newId('snap');
+        snapshots.push({ id, kind: doc.kind, hash: hashOf(doc.data), data: { setNumber, ...doc.data } });
+        d.snapshotId = id;
+        d.setNumber = setNumber;
+        d.lastGeneratedAt = ctx.now;
+        d.lastGeneratedBy = ctx.userId;
+        d.limitationsNote = cmd.payload.limitationsNote;
+      }
       touch(opp, ctx);
-      ev('AuditDeliverable', cmd.payload.kind, 'generated_locally', null, { at: ctx.now }, 'Локальный экспорт; клиенту не отправлялось');
+      ev('AuditDeliverable', opp.id, 'audit_set_saved', null, { setNumber }, 'Выжимка, клиентский и внутренний аудит сохранены из одной версии находок. Клиенту не отправлялось');
       break;
     }
 
@@ -752,7 +816,7 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
       if (opp.proposals.some((p) => p.status !== 'draft' && p.content.workItemIds.includes(w.id)))
         throw new DomainError('immutable', 'Работа входит в отправленную или утверждённую версию КП — удалить нельзя, создайте новую редакцию');
       opp.workItems = opp.workItems.filter((x) => x.id !== w.id);
-      for (const p of opp.proposals.filter((p) => p.status === 'draft' || p.status === 'approved_for_send'))
+      for (const p of opp.proposals.filter((p) => p.status === 'draft'))
         p.content.workItemIds = p.content.workItemIds.filter((id) => id !== w.id);
       touch(opp, ctx);
       ev('WorkItem', w.id, 'removed', pickWork(w), null);
@@ -772,16 +836,42 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
       }
       if (ctx.actingRole === 'specialist') {
         if (!existing || existing.performerUserId !== ctx.userId) throw new DomainError('forbidden', 'Специалист может менять только свою оценку');
-        const allowed: (keyof CostLine)[] = ['hours', 'hoursMin', 'hoursMax', 'confidence', 'zeroReason'];
+        const allowed: (keyof CostLine)[] = ['hours', 'hoursMin', 'hoursMax', 'confidence', 'zeroReason', 'verifiedBy', 'verifiedAt'];
         for (const k of Object.keys(line) as (keyof CostLine)[])
           if (!allowed.includes(k) && JSON.stringify(line[k]) !== JSON.stringify(existing[k])) throw new DomainError('forbidden_field', `Специалист не может менять поле «${String(k)}»`);
       }
+      // Подтверждённой оценку делает только действие «Проверить оценку»; любое изменение значения снимает проверку.
+      const valueKeys: (keyof CostLine)[] = ['hours', 'hoursMin', 'hoursMax', 'rateKop', 'amountKop', 'zeroReason', 'recurrence', 'workItemId'];
+      const valuesChanged = !existing || valueKeys.some((k) => JSON.stringify(line[k] ?? null) !== JSON.stringify(existing[k] ?? null));
+      if (line.confidence === 'confirmed' && (valuesChanged || existing?.confidence !== 'confirmed')) {
+        if (!valuesChanged) throw new DomainError('validation', 'Проверку оценки фиксирует действие «Проверить оценку»');
+        line.confidence = 'specialist_estimate';
+      }
+      if (valuesChanged) { line.verifiedBy = null; line.verifiedAt = null; if (line.confidence === 'confirmed') line.confidence = 'specialist_estimate'; }
       const before = existing ? clone(existing) : null;
       if (existing) Object.assign(existing, line);
       else est.lines.push(line);
       touch(est, ctx);
       touch(opp, ctx);
-      ev('CostLine', line.id, existing ? 'updated' : 'added', before, line);
+      ev('CostLine', line.id, existing ? 'updated' : 'added', before, line, before?.confidence === 'confirmed' && valuesChanged ? 'Значение изменено — проверка оценки снята' : null);
+      break;
+    }
+    case 'verifyCostLine': {
+      const est = editableEstimate(opp, cmd.payload.estimateId);
+      const l = find(est.lines, cmd.payload.lineId, 'Строка расчёта');
+      req(cmd.payload.comment, 'Комментарий проверяющего');
+      const hourly = ['specialist', 'pm', 'approvals'].includes(l.kind);
+      if (hourly ? l.hours === null || l.rateKop === null : l.amountKop === null)
+        throw new DomainError('validation', 'Нельзя проверить пустую оценку: сначала заполните значение');
+      if (ctx.actingRole !== 'owner' && l.performerUserId === ctx.userId)
+        throw new DomainError('forbidden', 'Свою оценку проверяет другой участник (ведущий специалист, проджект или владелец)');
+      const before = l.confidence;
+      l.confidence = 'confirmed';
+      l.verifiedBy = ctx.userId;
+      l.verifiedAt = ctx.now;
+      touch(est, ctx);
+      touch(opp, ctx);
+      ev('CostLine', l.id, 'estimate_verified', before, 'confirmed', cmd.payload.comment);
       break;
     }
     case 'removeCostLine': {
@@ -803,8 +893,9 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
         req(p.discount.reason, 'Причина скидки');
         if (!Number.isSafeInteger(p.discount.amountKop) || p.discount.amountKop < 0) throw new DomainError('validation', 'Скидка — неотрицательная сумма');
       }
-      if (p.manualPriceKop !== undefined && p.manualPriceKop !== null && (!Number.isSafeInteger(p.manualPriceKop) || p.manualPriceKop < 0))
-        throw new DomainError('validation', 'Цена — неотрицательная сумма');
+      for (const v of [p.manualPriceKop, p.manualMonthlyPriceKop])
+        if (v !== undefined && v !== null && (!Number.isSafeInteger(v) || v < 0)) throw new DomainError('validation', 'Цена — неотрицательная сумма');
+      if (p.discount && p.discount.appliesTo && !['one_time', 'monthly'].includes(p.discount.appliesTo)) throw new DomainError('validation', 'Скидка применяется к разовым или ежемесячным работам');
       if (p.targetMarginBp !== undefined && p.targetMarginBp !== null && (p.targetMarginBp < 0 || p.targetMarginBp >= 10000))
         throw new DomainError('validation', 'Целевая маржа — доля от 0 до 1 (меньше 100 %)');
       for (const b of p.externalBudgets ?? []) if (b.amountKop !== null && b.amountKop < 0) throw new DomainError('validation', 'Внешний бюджет не может быть отрицательным');
@@ -824,8 +915,11 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
       if (p.rateBp !== null && (p.rateBp < 0 || p.rateBp > 10000)) throw new DomainError('validation', 'Ставка комиссии — доля от 0 до 1');
       if (p.base === 'other') req(p.baseDescription, 'Описание базы комиссии');
       if (p.baseAmountKop !== null && p.baseAmountKop < 0) throw new DomainError('validation', 'База комиссии не может быть отрицательной');
+      if (p.appliesTo && !['one_time', 'monthly', 'both'].includes(p.appliesTo)) throw new DomainError('validation', 'Укажите, к каким работам применяется комиссия');
       if (p.id) {
         const r = find(opp.commissionRules, p.id, 'Правило комиссии');
+        const locked = opp.estimates.find((e) => e.status === 'locked' && e.commissionRuleId === r.id);
+        if (locked) throw new DomainError('immutable', `Правило используется в утверждённом расчёте v${locked.number}. Создайте новое правило и примените его в новой версии КП`);
         const before = clone(r);
         Object.assign(r, p);
         touch(r, ctx);
@@ -854,8 +948,8 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
     }
     case 'updateProposalContent': {
       const p = find(opp.proposals, cmd.payload.proposalId, 'Версия КП');
-      if (p.status !== 'draft' && p.status !== 'approved_for_send')
-        throw new DomainError('immutable', `Версия ${p.number} в статусе «${p.status}» неизменяема. Создайте новую редакцию`);
+      if (p.status !== 'draft')
+        throw new DomainError('immutable', `Версия ${p.number} утверждена или отправлена и не меняется. Создайте новую версию — она потребует повторного согласования, а решение по v${p.number} сохранится`);
       for (const id of cmd.payload.patch.workItemIds ?? []) find(opp.workItems, id, 'Работа');
       const before = clone(p.content);
       Object.assign(p.content, cmd.payload.patch);
@@ -879,9 +973,14 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
       };
       opp.approvals.push(a);
       p.status = 'approved_for_send';
+      // Замораживаем утверждённую версию: работы, расчёт и правило комиссии больше не меняются.
+      p.frozenWorks = clone(worksOf(opp, p));
+      const est = find(opp.estimates, p.estimateVersionId, 'Расчёт');
+      est.frozenRule = est.commissionRuleId ? clone(opp.commissionRules.find((r) => r.id === est.commissionRuleId) ?? null) : null;
+      est.status = 'locked';
       touch(p, ctx);
       touch(opp, ctx);
-      ev('Approval', a.id, 'approved', null, { proposal: p.number, hash, priceKop: snap.priceKop }, cmd.payload.comment);
+      ev('Approval', a.id, 'approved', null, { proposal: p.number, hash, priceKop: snap.priceKop, monthlyPriceKop: snap.monthlyPriceKop }, cmd.payload.comment);
       break;
     }
     case 'recordSent': {
@@ -945,11 +1044,23 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
     case 'createRevision': {
       const from = find(opp.proposals, cmd.payload.fromProposalId, 'Версия КП');
       req(cmd.payload.reason, 'Причина новой редакции');
-      if (opp.proposals.some((p) => p.status === 'draft' || p.status === 'approved_for_send'))
-        throw new DomainError('validation', 'Уже есть черновик новой редакции');
+      if (opp.proposals.some((p) => p.status === 'draft'))
+        throw new DomainError('validation', 'Уже есть черновик новой версии — изменения вносите в него');
+      if (from.status === 'draft') throw new DomainError('validation', 'Черновик можно менять напрямую');
       const number = Math.max(...opp.proposals.map((p) => p.number)) + 1;
       const fromEst = find(opp.estimates, from.estimateVersionId, 'Расчёт');
       const est: EstimateVersion = { ...clone(fromEst), ...meta(ctx, opp.isDemo, 'est'), number, status: 'draft' };
+      delete est.frozenRule;
+      if (from.status === 'approved_for_send') {
+        // Утверждённая, но не отправленная версия заменяется; решение владельца по ней остаётся в истории.
+        from.status = 'superseded';
+        touch(from, ctx);
+        for (const a of opp.approvals.filter((x) => x.proposalVersionId === from.id && x.status === 'active')) {
+          a.status = 'superseded';
+          touch(a, ctx);
+          ev('Approval', a.id, 'kept_for_superseded_version', 'active', 'superseded', `Версия v${from.number} заменена v${number}: ${cmd.payload.reason}`);
+        }
+      }
       opp.estimates.push(est);
       const p = newProposal(opp, ctx, number, est.id, from.id, clone(from.content));
       opp.proposals.push(p);
@@ -980,16 +1091,31 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
     case 'setChecklistItem': {
       const item = opp.launch.items.find((i) => i.key === cmd.payload.key);
       if (!item) throw new DomainError('not_found', 'Пункт не найден');
-      if (cmd.payload.status === 'not_applicable' && !cmd.payload.naReason?.trim())
+      const st = cmd.payload.status;
+      if (!['open', 'ready', 'deviation', 'not_applicable'].includes(st)) throw new DomainError('validation', 'Недопустимый статус проверки');
+      if (st === 'not_applicable' && !cmd.payload.naReason?.trim())
         throw new DomainError('validation', `«${CHECKLIST_LABELS[item.key]}»: для «неприменимо» нужна причина`, ['Причина неприменимости'], 'naReason');
-      if (cmd.payload.status === 'done' && !cmd.payload.note?.trim())
-        throw new DomainError('validation', `«${CHECKLIST_LABELS[item.key]}»: укажите, что именно проверено или где лежит`, ['Комментарий / где лежит'], 'note');
+      if (st === 'deviation' && !cmd.payload.note?.trim())
+        throw new DomainError('validation', `«${CHECKLIST_LABELS[item.key]}»: опишите отклонение — что не совпадает с договорённостями или не готово`, ['Описание отклонения'], 'note');
       if (looksLikeSecret(cmd.payload.note) || looksLikeSecret(cmd.payload.naReason))
         throw new DomainError('secret_detected', 'Похоже на пароль или ключ. Укажите ссылку на защищённое хранилище и ответственного, а не сам секрет', [], 'note');
       const before = clone(item);
-      Object.assign(item, { status: cmd.payload.status, note: cmd.payload.note, naReason: cmd.payload.status === 'not_applicable' ? cmd.payload.naReason : null, updatedBy: ctx.userId, updatedAt: ctx.now });
+      Object.assign(item, { status: st, note: cmd.payload.note, naReason: st === 'not_applicable' ? cmd.payload.naReason : null, deviationDecision: null, updatedBy: ctx.userId, updatedAt: ctx.now });
       touch(opp, ctx);
-      ev('LaunchChecklist', item.key, 'item_updated', before, item);
+      ev('LaunchChecklist', item.key, st === 'deviation' ? 'deviation_recorded' : 'item_checked', before, item,
+        st === 'deviation' && item.key === 'terms_reconciled' ? 'Отклонение от договорённостей: если меняются условия — нужна новая версия КП' : null);
+      break;
+    }
+    case 'decideDeviation': {
+      const item = opp.launch.items.find((i) => i.key === cmd.payload.key);
+      if (!item) throw new DomainError('not_found', 'Пункт не найден');
+      if (item.status !== 'deviation') throw new DomainError('validation', 'Принять можно только зафиксированное отклонение');
+      req(cmd.payload.reason, 'Почему отклонение допустимо');
+      const before = clone(item);
+      item.status = 'deviation_accepted';
+      item.deviationDecision = { by: ctx.userId, at: ctx.now, reason: cmd.payload.reason.trim() };
+      touch(opp, ctx);
+      ev('LaunchChecklist', item.key, 'deviation_accepted', before, item, cmd.payload.reason);
       break;
     }
     case 'setPayment': {
@@ -1055,7 +1181,6 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
     }
   }
 
-  reconcileApprovals(opp, ctx, ev);
   return { opp, events, snapshots, effects };
 }
 
@@ -1065,8 +1190,10 @@ export function approvalBlockers(opp: Opportunity, p: ProposalVersion): string[]
   const b: string[] = [];
   const est = find(opp.estimates, p.estimateVersionId, 'Расчёт');
   const rule = est.commissionRuleId ? opp.commissionRules.find((r) => r.id === est.commissionRuleId) ?? null : null;
-  const r = computeEstimate(est, rule);
-  if (!r.complete) for (const i of r.issues) b.push(i.message);
+  const r = computeFor(opp, est);
+  for (const i of r.issues) if (i.severity !== 'unverified') b.push(i.message);
+  const unverified = r.issues.filter((i) => i.severity === 'unverified');
+  if (unverified.length) b.push(`Оценки не проверены (${unverified.length}): ${unverified.map((i) => i.message.split('»')[0].replace('«', '')).join(', ')}. Проверьте их действием «Проверить оценку»`);
   if (rule && !rule.ownerApproved) b.push(`Правило комиссии «${rule.label}» не утверждено владельцем (демо)`);
   if (!p.content.workItemIds.length) b.push('В КП не выбрано ни одной работы');
   for (const id of p.content.workItemIds) {
@@ -1098,21 +1225,6 @@ export function workItemIssues(opp: Opportunity, w: WorkItem): string[] {
   if (w.quantity === null || !w.unit) b.push(`«${w.title}»: нет измеримого объёма (количество и единица)`);
   if (!w.acceptanceCriterion) b.push(`«${w.title}»: нет критерия приёмки`);
   return b;
-}
-
-function reconcileApprovals(opp: Opportunity, ctx: Ctx, ev: (t: string, id: string, a: string, b: unknown, af: unknown, r?: string | null, o?: boolean) => void) {
-  for (const a of opp.approvals.filter((x) => x.status === 'active')) {
-    const p = opp.proposals.find((x) => x.id === a.proposalVersionId);
-    if (!p || (p.status !== 'draft' && p.status !== 'approved_for_send')) continue; // отправленные неизменяемы
-    const current = buildMaterialSnapshot(opp, p);
-    if (snapshotHash(current) === a.snapshotHash) continue;
-    const d = diffMaterial(a.snapshot as MaterialSnapshot, current);
-    a.status = 'revoked';
-    a.revoked = { at: ctx.now, by: ctx.userId, reason: `Изменены существенные условия: ${d.details.join('; ')}`, categories: d.categories, details: d.details };
-    touch(a, ctx);
-    if (p.status === 'approved_for_send') { p.status = 'draft'; touch(p, ctx); }
-    ev('Approval', a.id, 'revoked_automatically', 'active', { categories: d.categories }, a.revoked.reason);
-  }
 }
 
 /* ---------- внутренние helpers ---------- */
@@ -1249,15 +1361,68 @@ function validateBasis(opp: Opportunity, w: WorkItem) {
 }
 
 function assertWorkItemEditable(opp: Opportunity, id: string) {
-  const locked = opp.proposals.find((p) => p.content.workItemIds.includes(id) && ['sent', 'accepted', 'rejected', 'superseded'].includes(p.status));
-  const draftUses = opp.proposals.some((p) => p.content.workItemIds.includes(id) && (p.status === 'draft' || p.status === 'approved_for_send'));
+  // Утверждённые и отправленные версии хранят замороженные копии работ, поэтому правка возможна только при наличии черновика.
+  const locked = opp.proposals.find((p) => p.content.workItemIds.includes(id) && p.status !== 'draft');
+  const draftUses = opp.proposals.some((p) => p.content.workItemIds.includes(id) && p.status === 'draft');
   if (locked && !draftUses)
-    throw new DomainError('immutable', `Работа входит в отправленную версию КП v${locked.number}. Создайте новую редакцию КП и копию работы`);
+    throw new DomainError('immutable', `Работа входит в утверждённую или отправленную версию КП v${locked.number}. Создайте новую версию КП — изменения войдут в неё`);
+}
+
+const normText = (t: string) => t.replace(/\s+/g, ' ').trim().toLowerCase();
+
+type IncomingProposal = { kind: ProposedChange['kind']; key: FactKey | null; value: FactValue; excerpt: string; timecode: string | null; note: string; addressedToRole: string | null; origin: 'keyword_rules' | 'structured_import' };
+
+/**
+ * Добавляет предложения в очередь без дублей: повторная обработка того же текста (или новой версии источника)
+ * не создаёт повторов и не трогает уже принятые сведения.
+ */
+function addProposals(opp: Opportunity, s: Source, items: IncomingProposal[], ctx: Ctx) {
+  let added = 0, skippedDuplicates = 0, alreadyInCard = 0, quoteNotFound = 0;
+  const srcText = normText(s.text);
+  for (const it of items) {
+    const fingerprint = hashOf({ kind: it.kind, key: it.key, value: it.value, excerpt: normText(it.excerpt) });
+    if (opp.proposedChanges.some((p) => p.fingerprint === fingerprint)) { skippedDuplicates++; continue; }
+    if ((it.kind === 'fact' || it.kind === 'metric' || it.kind === 'budget_mention' || it.kind === 'client_wish')
+      && opp.facts.some((f) => f.key === (it.key ?? it.kind) && JSON.stringify(f.value) === JSON.stringify(it.value))) { alreadyInCard++; continue; }
+    const quoteFound = srcText.includes(normText(it.excerpt));
+    if (!quoteFound) quoteNotFound++;
+    opp.proposedChanges.push({
+      ...meta(ctx, opp.isDemo, 'pc'),
+      sourceId: s.id, kind: it.kind, key: it.key, value: it.value, excerpt: it.excerpt, timecode: it.timecode,
+      note: quoteFound ? it.note : `${it.note}. Цитата не найдена в тексте источника дословно — проверьте`,
+      status: 'pending', decision: null, addressedToRole: it.addressedToRole, origin: it.origin, fingerprint, quoteFound,
+    });
+    added++;
+  }
+  return { added, skippedDuplicates, alreadyInCard, quoteNotFound };
+}
+
+export interface MissingItem { key: FactKey; label: string; question: string; addressedToRole: string; impacts: ImpactArea[]; hasOpenQuestion: boolean }
+
+/** Значимые сведения, без которых трудно сделать конкретное предложение. Полный бриф не требуется. */
+export function missingInfo(opp: Opportunity): MissingItem[] {
+  const REQ: Omit<MissingItem, 'hasOpenQuestion'>[] = [
+    { key: 'request_verbatim', label: 'Запрос словами клиента', question: 'Что именно нужно сделать — формулировка клиента?', addressedToRole: 'Клиент: контактное лицо', impacts: ['scope'] },
+    { key: 'business_goal', label: 'Результат первого этапа', question: 'Какой результат первого этапа клиент будет считать успешным?', addressedToRole: 'Клиент: ЛПР', impacts: ['scope', 'acceptance'] },
+    { key: 'deadline', label: 'Срок', question: 'К какой дате нужен результат и с чем связана эта дата?', addressedToRole: 'Клиент: ЛПР', impacts: ['timeline'] },
+    { key: 'decision_maker', label: 'Кто принимает и согласует', question: 'Кто принимает решение и кто согласует результат?', addressedToRole: 'Клиент: контактное лицо', impacts: ['acceptance', 'risk'] },
+    { key: 'materials', label: 'Материалы и доступы', question: 'Какие материалы и доступы клиент передаёт для работы (без паролей в переписке)?', addressedToRole: 'Клиент: контактное лицо', impacts: ['scope', 'timeline'] },
+  ];
+  const out: MissingItem[] = [];
+  for (const r of REQ)
+    if (!opp.facts.some((f) => f.key === r.key))
+      out.push({ ...r, hasOpenQuestion: opp.clarifications.some((c) => c.status === 'open' && c.factKey === r.key) });
+  if (opp.budget.status === 'not_discussed' && !opp.facts.some((f) => f.key === 'budget_mention'))
+    out.push({
+      key: 'budget_mention', label: 'Бюджет (не обсуждали)', question: 'Какой бюджет или диапазон рассматривает клиент — отдельно на работы агентства и на рекламу?',
+      addressedToRole: 'Клиент: ЛПР', impacts: ['cost', 'route'], hasOpenQuestion: opp.clarifications.some((c) => c.status === 'open' && c.factKey === 'budget_mention'),
+    });
+  return out;
 }
 
 function editableEstimate(opp: Opportunity, id: string): EstimateVersion {
   const est = find(opp.estimates, id, 'Расчёт');
-  if (est.status === 'locked') throw new DomainError('immutable', `Расчёт v${est.number} зафиксирован с отправленной версией КП. Создайте новую редакцию`);
+  if (est.status === 'locked') throw new DomainError('immutable', `Расчёт v${est.number} утверждён и зафиксирован. Изменения — только в новой версии КП (потребуется повторное согласование)`);
   return est;
 }
 
@@ -1265,8 +1430,8 @@ function newEstimate(opp: Opportunity, ctx: Ctx, number: number): EstimateVersio
   return {
     ...meta(ctx, opp.isDemo, 'est'), number, status: 'draft',
     lines: [
-      { id: ctx.newId('cl'), kind: 'pm', workItemId: null, label: 'Часы проджекта', performerUserId: opp.presalePmUserId, hours: null, hoursMin: null, hoursMax: null, rateKop: null, amountKop: null, zeroReason: null, confidence: 'preliminary' },
-      { id: ctx.newId('cl'), kind: 'approvals', workItemId: null, label: 'Согласования с клиентом', performerUserId: opp.presalePmUserId, hours: null, hoursMin: null, hoursMax: null, rateKop: null, amountKop: null, zeroReason: null, confidence: 'preliminary' },
+      { id: ctx.newId('cl'), kind: 'pm', workItemId: null, label: 'Часы проджекта', performerUserId: opp.presalePmUserId, hours: null, hoursMin: null, hoursMax: null, rateKop: null, amountKop: null, zeroReason: null, confidence: 'preliminary', recurrence: 'one_time' },
+      { id: ctx.newId('cl'), kind: 'approvals', workItemId: null, label: 'Согласования с клиентом', performerUserId: opp.presalePmUserId, hours: null, hoursMin: null, hoursMax: null, rateKop: null, amountKop: null, zeroReason: null, confidence: 'preliminary', recurrence: 'one_time' },
     ],
     commissionRuleId: null, noCommissionConfirmed: false, targetMarginBp: null, targetMarginSource: null, rounding: 'up_to_ruble',
     taxModel: { status: 'not_set', description: null }, priceMode: 'formula', manualPriceKop: null, discount: null, externalBudgets: [],

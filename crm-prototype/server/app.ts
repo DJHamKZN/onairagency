@@ -3,17 +3,13 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join, normalize, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { validateBackupText, MAX_BACKUP_BYTES, type Backup } from '../src/domain/backup';
-import { exportClientAudit, exportClientProposal } from '../src/domain/clientExport';
+import { exportClientAudit, exportClientProposal, exportHandoff } from '../src/domain/clientExport';
 import { DomainError } from '../src/domain/errors';
-import { computeEstimate } from '../src/domain/economics';
-import { formatKop } from '../src/domain/money';
-import { CHECKLIST_LABELS } from '../src/domain/launch';
-import { FACT_KEY_LABELS, formatFactValue } from '../src/domain/labels';
 import type { Role, User } from '../src/domain/types';
-import { MODULE_LABELS, MODULE_STATUS_LABELS, ROLE_LABELS } from '../src/domain/types';
+import { ROLE_LABELS } from '../src/domain/types';
 import { loginAllowed, loginFailed, loginSucceeded, newToken, parseCookies, tokenHash, verifyPassword } from './auth';
 import { openDb, type DB } from './db';
-import { auditBriefPdf, auditDocx, internalDocx, PdfFontMissing, proposalDocx } from './docs';
+import { auditBriefPdf, auditDocx, handoffDocx, internalAuditDocx, PdfFontMissing, proposalDocx } from './docs';
 import { ConflictError, Repo } from './repo';
 import { seedDemo, ensureUsers } from './seed';
 import { AccessError, Service } from './service';
@@ -222,7 +218,11 @@ async function route(state: AppState, req: IncomingMessage, res: ServerResponse,
       const company = repo.company(v.companyId);
       return send(res, 200, { ...v, companyName: company?.name ?? null, ownerDecisions: role === 'owner' ? svc.ownerDecisionsFor(repo.opportunity(id)!) : [] });
     }
-    if (method === 'GET' && seg[3] === 'history') return send(res, 200, svc.history(user, role, id));
+    if (method === 'GET' && seg[3] === 'history') {
+      const since = url.searchParams.get('since');
+      const all = svc.history(user, role, id);
+      return send(res, 200, since ? all.filter((e) => e.at > since) : all);
+    }
     if (method === 'POST' && seg[3] === 'commands') {
       const b = await readJson(req);
       const r = svc.run(user, role, id, b.command as never, Number(b.expectedVersion));
@@ -303,56 +303,47 @@ function swapDatabase(state: AppState, backup: Backup): string | null {
 
 async function exportRoute(state: AppState, res: ServerResponse, user: User, role: Role, id: string, rest: string[], url: URL) {
   const { svc, repo } = state;
-  if (role !== 'owner' && role !== 'presale_pm' && role !== 'lead_specialist') throw new AccessError(403, 'Экспорт недоступен для этой роли');
-  svc.view(user, role, id); // проверка доступа
+  svc.view(user, role, id); // проверка доступа к возможности (чужой ID → 404)
   const opp = repo.opportunity(id)!;
   const company = repo.company(opp.companyId)!;
   const log = (action: string, after: unknown) =>
     repo.appendEvents(id, [{ entityType: 'Export', entityId: id, action, before: null, after, reason: 'Локальный экспорт. Клиенту не отправлялось' }], user.id, role, new Date().toISOString(), opp.isDemo);
+  const DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   const [kind, target] = rest;
   if (kind === 'proposal') {
-    if (role === 'lead_specialist') throw new AccessError(403, 'Экспорт КП доступен владельцу и проджекту');
+    if (role !== 'owner' && role !== 'presale_pm') throw new AccessError(403, 'Экспорт КП доступен владельцу и проджекту');
     const p = opp.proposals.find((x) => x.id === target);
     if (!p) throw new AccessError(404, 'Версия КП не найдена');
     const data = exportClientProposal(opp, company, p);
     const format = url.searchParams.get('format') ?? 'json';
     log('client_proposal_generated', { version: p.number, status: p.status, format });
     if (format === 'json') return send(res, 200, data);
-    if (format === 'docx') return attachment(res, `KP_${company.name}_v${p.number}${p.status === 'draft' ? '_CHERNOVIK' : ''}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', await proposalDocx(data));
+    if (format === 'docx') return attachment(res, `KP_${company.name}_v${p.number}${p.status === 'draft' ? '_CHERNOVIK' : ''}.docx`, DOCX, await proposalDocx(data));
+    throw new HttpError(400, 'Неизвестный формат');
+  }
+  if (kind === 'handoff') {
+    if (role !== 'owner' && role !== 'presale_pm' && role !== 'receiving_pm') throw new AccessError(403, 'Пакет передачи доступен владельцу, проджекту пресейла и принимающему проджекту');
+    const data = exportHandoff(opp, company);
+    if (!data) throw new HttpError(422, 'Нет принятой клиентом версии КП — пакет передачи строится только из неё');
+    const format = url.searchParams.get('format') ?? 'json';
+    log('handoff_package_generated', { version: data.terms.versionNumber, format });
+    if (format === 'json') return send(res, 200, data);
+    if (format === 'docx') return attachment(res, `Peredacha_${company.name}_KP_v${data.terms.versionNumber}.docx`, DOCX, await handoffDocx(data));
     throw new HttpError(400, 'Неизвестный формат');
   }
   if (kind === 'audit') {
-    if (target === 'client_brief_pdf') {
-      const data = exportClientAudit(opp, company, 'brief');
-      const pdf = await auditBriefPdf(data);
-      log('audit_brief_pdf_generated', { findings: data.findings.length });
-      return attachment(res, `Audit_kratko_${company.name}.pdf`, 'application/pdf', pdf);
-    }
-    if (target === 'client_detailed_docx') {
-      const data = exportClientAudit(opp, company, 'detailed');
-      log('audit_detailed_docx_generated', { findings: data.findings.length });
-      return attachment(res, `Audit_podrobno_${company.name}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', await auditDocx(data));
-    }
+    if (role !== 'owner' && role !== 'presale_pm' && role !== 'lead_specialist') throw new AccessError(403, 'Экспорт аудита недоступен для этой роли');
     if (target === 'client_json') return send(res, 200, exportClientAudit(opp, company, 'detailed'));
-    if (target === 'internal_docx') {
-      if (!(role === 'owner' || (role === 'presale_pm' && opp.pmCostVisibility))) throw new AccessError(403, 'Внутренний документ с экономикой доступен владельцу (или PM с разрешением)');
-      const team = new Map(repo.users().map((u) => [u.id, u.displayName]));
-      const blocks = [
-        { h: 'Факты и источники', table: [['Поле', 'Значение', 'Статус', 'Источник'], ...opp.facts.map((f) => [FACT_KEY_LABELS[f.key], formatFactValue(f.value), f.status, opp.sources.find((s) => s.id === f.sourceId)?.title ?? '—'])] },
-        { h: 'Обещания', p: opp.promises.map((p) => `${p.what} — ${p.status}${p.conditional ? ' (условное)' : ''}`).join('\n') || 'Нет' },
-        { h: 'Открытые вопросы', p: opp.clarifications.filter((c) => c.status === 'open').map((c) => `${c.question} → ${c.addressedToRole}`).join('\n') || 'Нет' },
-        { h: 'Модули', table: [['Модуль', 'Статус', 'Причина'], ...opp.audit.modules.map((m) => [MODULE_LABELS[m.key], MODULE_STATUS_LABELS[m.status], m.reason ?? '—'])] },
-        { h: 'Все находки (включая непроверенные)', table: [['Код', 'Находка', 'Проверка', 'Ограничение'], ...opp.findings.map((f) => [f.code, f.title, f.verification, f.limitation ?? '—'])] },
-        { h: 'Задачи', p: opp.tasks.map((t) => `${t.title} — ${t.status}${t.assigneeUserId ? `, ${team.get(t.assigneeUserId)}` : ''}`).join('\n') || 'Нет' },
-        ...opp.estimates.map((e) => {
-          const r = computeEstimate(e, e.commissionRuleId ? opp.commissionRules.find((c) => c.id === e.commissionRuleId) ?? null : null);
-          return { h: `Расчёт v${e.number} (${e.status})`, p: [`C = ${formatKop(r.costKop)}`, `P = ${formatKop(r.priceKop)}`, `Комиссия = ${formatKop(r.commissionKop)}`, `Остаток = ${formatKop(r.remainderKop)}`, ...r.issues.map((i) => `! ${i.message}`)].join('\n') };
-        }),
-        { h: 'Пакет запуска', p: opp.launch.items.map((i) => `${CHECKLIST_LABELS[i.key]}: ${i.status}${i.naReason ? ` (${i.naReason})` : ''}`).join('\n') },
-      ];
-      log('internal_docx_generated', {});
-      return attachment(res, `Vnutrenniy_${company.name}.docx`, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', await internalDocx(`Внутренний рабочий материал — ${opp.title}`, blocks));
-    }
+    const d = opp.audit.deliverables.find((x) => x.kind === target);
+    if (!d) throw new HttpError(404, 'Документы полного аудита не предусмотрены: полный аудит не включён');
+    if (!d.snapshotId) throw new HttpError(422, 'Сначала сохраните комплект документов аудита — файлы строятся из сохранённой версии');
+    const snap = repo.snapshots().find((x) => x.id === d.snapshotId);
+    if (!snap) throw new HttpError(404, 'Сохранённая версия документа не найдена');
+    const data = snap.data as never;
+    log('audit_document_downloaded', { kind: target, setNumber: d.setNumber });
+    if (target === 'client_brief_pdf') return attachment(res, `Audit_vyzhimka_${company.name}_komplekt${d.setNumber}.pdf`, 'application/pdf', await auditBriefPdf(data));
+    if (target === 'client_detailed_docx') return attachment(res, `Audit_klient_${company.name}_komplekt${d.setNumber}.docx`, DOCX, await auditDocx(data));
+    if (target === 'internal_docx') return attachment(res, `Audit_vnutrenniy_${company.name}_komplekt${d.setNumber}.docx`, DOCX, await internalAuditDocx(data));
   }
   throw new HttpError(404, 'Неизвестный экспорт');
 }

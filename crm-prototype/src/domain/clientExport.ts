@@ -4,7 +4,9 @@
  * служебные ссылки и секреты сюда не попадают по построению.
  */
 import { clientExportReadiness } from './audit';
-import { computeEstimate } from './economics';
+import { worksOf } from './approval';
+import { computeFor } from './economics';
+import { agreedTerms, CHECKLIST_LABELS, CHECKLIST_STATUS_LABELS, handoffBlockers, type AgreedTerms } from './launch';
 import type { Company, ModuleKey, Opportunity, ProposalVersion } from './types';
 import { CLAIM_TYPE_LABELS, MODULE_LABELS, MODULE_STATUS_LABELS, PROPOSAL_STATUS_LABELS } from './types';
 
@@ -21,7 +23,10 @@ export interface ClientProposalExport {
   timeline: string | null;
   dependencies: string | null;
   clientActions: string | null;
-  agencyFeeKop: number | null;
+  /** Цена услуг агентства (выручка агентства), разовые работы. */
+  serviceOneTimeKop: number | null;
+  /** Цена услуг агентства, ежемесячные работы (в месяц); null — ежемесячных работ нет. */
+  serviceMonthlyKop: number | null;
   discountKop: number | null;
   externalBudgets: { label: string; amountKop: number | null; period: string | null; paidBy: string }[];
   externalBudgetsNote: string;
@@ -36,8 +41,8 @@ export interface ClientProposalExport {
 
 export function exportClientProposal(opp: Opportunity, company: Company, p: ProposalVersion): ClientProposalExport {
   const est = opp.estimates.find((e) => e.id === p.estimateVersionId);
-  const rule = est?.commissionRuleId ? opp.commissionRules.find((r) => r.id === est.commissionRuleId) ?? null : null;
-  const r = est ? computeEstimate(est, rule) : null;
+  const r = est ? computeFor(opp, est) : null;
+  const works = worksOf(opp, p);
   const c = p.content;
   const watermark =
     p.status === 'draft' ? 'ЧЕРНОВИК — не утверждён, не отправлялся клиенту'
@@ -53,7 +58,7 @@ export function exportClientProposal(opp: Opportunity, company: Company, p: Prop
     understanding: c.understanding,
     firstOfferWhy: c.firstOfferWhy,
     works: c.workItemIds
-      .map((id) => opp.workItems.find((w) => w.id === id))
+      .map((id) => works.find((w) => w.id === id))
       .filter((w): w is NonNullable<typeof w> => !!w)
       .map((w) => ({
         title: w.title,
@@ -67,12 +72,13 @@ export function exportClientProposal(opp: Opportunity, company: Company, p: Prop
     timeline: c.timeline,
     dependencies: c.dependencies,
     clientActions: c.clientActions,
-    agencyFeeKop: r?.priceKop ?? null,
+    serviceOneTimeKop: r?.oneTime.present ? r.oneTime.priceKop : null,
+    serviceMonthlyKop: r?.monthly.present ? r.monthly.priceKop : null,
     discountKop: est?.discount?.amountKop ?? null,
     externalBudgets: (est?.externalBudgets ?? []).map((b) => ({
       label: b.label, amountKop: b.amountKop, period: b.period, paidBy: b.paidBy === 'client_direct' ? 'Оплачивает клиент напрямую' : 'Через агентство',
     })),
-    externalBudgetsNote: 'Внешние бюджеты (реклама, сервисы площадок) не входят в стоимость работ агентства.',
+    externalBudgetsNote: 'Рекламный бюджет и другие внешние расходы клиента не входят в стоимость услуг агентства и оплачиваются отдельно.',
     payment: c.payment,
     revisions: c.revisions,
     exclusions: c.exclusions,
@@ -150,7 +156,7 @@ export function exportClientAudit(opp: Opportunity, company: Company, detail: 'b
 
 /** Ключи, которых не должно быть ни в одном клиентском экспорте (на любой глубине). */
 export const FORBIDDEN_CLIENT_KEYS = [
-  'rateKop', 'costKop', 'costMinKop', 'costMaxKop', 'commissionKop', 'remainderKop', 'targetMarginBp', 'commissionRuleId', 'commissionRules',
+  'rateKop', 'costKop', 'verifiedCostKop', 'unverifiedCostKop', 'frozenRule', 'targetMargin', 'costMinKop', 'costMaxKop', 'commissionKop', 'remainderKop', 'targetMarginBp', 'commissionRuleId', 'commissionRules',
   'lines', 'snapshot', 'approvals', 'history', 'createdBy', 'updatedBy', 'authorUserId', 'evidenceReview', 'presalePmUserId', 'ownerUserId',
   'receivingPmUserId', 'specialistUserIds', 'accessOwnerRole', 'tasks', 'internal', 'password', 'token', 'reason_internal',
 ];
@@ -164,4 +170,48 @@ export function findForbiddenKeys(obj: unknown, path = ''): string[] {
       out.push(...findForbiddenKeys(v, `${path}.${k}`));
     }
   return out;
+}
+
+/** Внутренний аудит команды: все находки (включая непроверенные), модули, вопросы, задачи. Без ставок и экономики. */
+export function exportInternalAudit(opp: Opportunity) {
+  return {
+    documentType: 'Внутренний аудит команды',
+    note: 'ВНУТРЕННИЙ ДОКУМЕНТ. Не передавать клиенту.',
+    route: opp.audit.type,
+    depth: opp.audit.depth,
+    modules: opp.audit.modules.map((m) => ({ module: MODULE_LABELS[m.key], status: MODULE_STATUS_LABELS[m.status], reason: m.reason, accessNeeded: m.accessNeeded, accessOwnerRole: m.accessOwnerRole, blockedDecision: m.blockedDecision })),
+    findings: opp.findings.map((f) => ({
+      code: f.code, title: f.title, module: MODULE_LABELS[f.module], claimType: CLAIM_TYPE_LABELS[f.claimType], verification: f.verification,
+      observation: f.observation, causeHypothesis: f.causeHypothesis, evidenceQuote: f.evidenceQuote, reviewComment: f.evidenceReview?.comment ?? null,
+      limitation: f.limitation, recommendation: f.recommendation, clientReady: clientExportReadiness(opp, f).ready,
+    })),
+    openQuestions: opp.clarifications.filter((c) => c.status === 'open').map((c) => ({ question: c.question, to: c.addressedToRole })),
+    leadPath: Object.entries(opp.audit.leadPath).map(([level, v]) => ({ level, status: LP_STATUS[v.status], note: v.note })),
+  };
+}
+
+/** Пакет передачи в работу: договорённости из принятой версии КП + проверки готовности. Без ставок, затрат и комиссии. */
+export interface HandoffExport {
+  documentType: 'Пакет передачи в работу';
+  company: string;
+  opportunity: string;
+  terms: AgreedTerms;
+  checks: { item: string; status: string; note: string | null }[];
+  paymentStatus: string;
+  blockers: string[];
+}
+
+export function exportHandoff(opp: Opportunity, company: Company): HandoffExport | null {
+  const terms = agreedTerms(opp);
+  if (!terms) return null;
+  const pay = { unknown: 'Не указан', paid_confirmed_manually: 'Оплачено — отметка вручную', deferred_by_terms: 'Отсрочка по условиям', not_required_by_terms: 'Предоплата не требуется по условиям' }[opp.launch.payment.status];
+  return {
+    documentType: 'Пакет передачи в работу',
+    company: company.name,
+    opportunity: opp.title,
+    terms,
+    checks: opp.launch.items.map((i) => ({ item: CHECKLIST_LABELS[i.key], status: CHECKLIST_STATUS_LABELS[i.status], note: i.status === 'not_applicable' ? i.naReason : i.note })),
+    paymentStatus: pay,
+    blockers: handoffBlockers(opp),
+  };
 }

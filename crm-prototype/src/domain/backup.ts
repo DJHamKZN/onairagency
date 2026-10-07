@@ -60,8 +60,8 @@ const opportunitySchema = z
     estimates: z.array(withId.and(z.object({ number: z.number().int(), lines: z.array(withId) }))),
     commissionRules: z.array(withId),
     proposals: z.array(withId.and(z.object({ number: z.number().int(), status: z.string(), estimateVersionId: id, previousVersionId: id.nullable(), content: z.object({ workItemIds: z.array(id) }).passthrough() }))),
-    approvals: z.array(withId.and(z.object({ proposalVersionId: id, estimateVersionId: id, snapshotId: id, snapshotHash: z.string(), status: z.enum(['active', 'revoked']) }))),
-    launch: z.object({ items: z.array(z.object({ key: z.string(), status: z.enum(['open', 'done', 'not_applicable']) }).passthrough()) }).passthrough(),
+    approvals: z.array(withId.and(z.object({ proposalVersionId: id, estimateVersionId: id, snapshotId: id, snapshotHash: z.string(), status: z.enum(['active', 'revoked', 'superseded']) }))),
+    launch: z.object({ items: z.array(z.object({ key: z.string(), status: z.enum(['open', 'ready', 'deviation', 'deviation_accepted', 'not_applicable']) }).passthrough()) }).passthrough(),
     handoffAcceptances: z.array(withId),
     launchAuthorizations: z.array(withId),
     findingSeq: z.number().int().nonnegative(),
@@ -78,7 +78,7 @@ const backupSchema = z.object({
   contacts: z.array(z.object({ ...base, companyId: id, label: z.string(), decisionRole: z.string() })),
   opportunities: z.array(opportunitySchema),
   changeEvents: z.array(z.object({ id, opportunityId: id.nullable(), entityType: z.string(), entityId: z.string(), action: z.string(), userId: z.string(), at: z.string(), isDemo: z.boolean() }).passthrough()),
-  snapshots: z.array(z.object({ id, opportunityId: id, kind: z.enum(['approval', 'proposal_sent']), hash: z.string(), createdAt: z.string(), isDemo: z.boolean() }).passthrough()),
+  snapshots: z.array(z.object({ id, opportunityId: id, kind: z.enum(['approval', 'proposal_sent', 'audit_brief', 'audit_client', 'audit_internal']), hash: z.string(), createdAt: z.string(), isDemo: z.boolean() }).passthrough()),
   settings: z.object({}).passthrough(),
 });
 
@@ -166,6 +166,8 @@ export function referenceErrors(b: Backup): string[] {
       for (const w of pr.content.workItemIds) if (!works.has(w)) e.push(`${p}: КП v${pr.number} ссылается на отсутствующую работу`);
       if (pr.frozenSnapshotId && !snaps.has(pr.frozenSnapshotId)) e.push(`${p}: КП v${pr.number} — отсутствует снимок отправки`);
     }
+    for (const d of (o.audit.deliverables ?? []) as { snapshotId?: string | null; kind: string }[])
+      if (d.snapshotId && !snaps.has(d.snapshotId)) e.push(`${p}: сохранённый документ аудита ${d.kind} — отсутствует снимок`);
     for (const a of o.approvals) {
       if (!props.has(a.proposalVersionId) || !ests.has(a.estimateVersionId)) e.push(`${p}: утверждение ${a.id} с разорванной ссылкой`);
       if (!snaps.has(a.snapshotId)) e.push(`${p}: утверждение ${a.id} — отсутствует неизменяемый снимок`);

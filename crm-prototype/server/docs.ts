@@ -10,7 +10,7 @@ import {
   AlignmentType, BorderStyle, Document, Footer, Header, HeadingLevel, Packer, PageNumber, Paragraph, Table, TableCell, TableRow, TextRun, WidthType,
 } from 'docx';
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
-import type { ClientAuditExport, ClientProposalExport } from '../src/domain/clientExport';
+import type { ClientAuditExport, ClientProposalExport, HandoffExport, exportInternalAudit } from '../src/domain/clientExport';
 import { formatKop } from '../src/domain/money';
 
 const MM_TWIP = 56.6929;
@@ -82,9 +82,15 @@ export function proposalBlocks(e: ClientProposalExport): Block[] {
     },
     { h: 'Сроки и зависимости', p: `${v(e.timeline)}. Зависимости: ${v(e.dependencies)}` },
     { h: 'Материалы и действия клиента', p: v(e.clientActions) },
-    { h: 'Стоимость работ агентства', p: `${formatKop(e.agencyFeeKop)}${e.discountKop ? ` (с учётом скидки ${formatKop(e.discountKop)})` : ''}` },
     {
-      h: 'Внешние бюджеты (отдельно от стоимости агентства)',
+      h: 'Стоимость услуг агентства',
+      p: [
+        e.serviceOneTimeKop !== null ? `Разовые работы: ${formatKop(e.serviceOneTimeKop)}${e.discountKop ? ` (с учётом скидки ${formatKop(e.discountKop)})` : ''}` : null,
+        e.serviceMonthlyKop !== null ? `Ежемесячные работы: ${formatKop(e.serviceMonthlyKop)} в месяц` : null,
+      ].filter(Boolean).join('\n') || 'не рассчитана',
+    },
+    {
+      h: 'Рекламный бюджет и внешние расходы клиента (не входят в стоимость услуг)',
       p: e.externalBudgets.length ? e.externalBudgets.map((b) => `${b.label}: ${formatKop(b.amountKop)}${b.period ? `, ${b.period}` : ''} — ${b.paidBy}`).join('; ') : 'Не предусмотрены',
     },
     { p: e.externalBudgetsNote, muted: true },
@@ -128,7 +134,8 @@ export function auditDocx(e: ClientAuditExport) {
   return blocksToDocx(`${e.documentType} — ${e.company}`, e.draftNote, auditBlocks(e));
 }
 
-export function internalDocx(title: string, blocks: Block[]) {
+export function internalDocx(title: string, blocks: Block[]) { // оставлено для совместимости
+
   return blocksToDocx(title, 'ВНУТРЕННИЙ ДОКУМЕНТ КОМАНДЫ. Не передавать клиенту. Содержит экономику, задачи, допущения и риски.', blocks);
 }
 
@@ -211,4 +218,39 @@ export function auditBriefPdf(e: ClientAuditExport) {
     { h: 'Ограничения', p: e.limitations.join('\n') },
   ];
   return blocksToPdf(`Краткий отчёт по аудиту — ${e.company}`, e.draftNote, brief);
+}
+
+export function handoffBlocks(e: HandoffExport): Block[] {
+  const t = e.terms;
+  return [
+    { p: `Источник договорённостей: принятая клиентом версия КП v${t.versionNumber} (${v(t.acceptedDate)}, подтверждение: ${v(t.confirmationSource)}). Договорённости не переписываются вручную — изменения только через новую версию КП.`, muted: true },
+    { h: 'Объём и результат', table: [['Работа', 'Объём', 'Результат', 'Критерий приёмки', 'Тип'], ...t.works.map((w) => [w.title, `${w.quantity ?? '—'} ${w.unit ?? ''}`, v(w.expectedResult), v(w.acceptanceCriterion), w.recurrence === 'monthly' ? 'Ежемесячная' : 'Разовая'])] },
+    { h: 'Результат и приёмка', p: v(t.resultAndAcceptance) },
+    { h: 'Исключения', p: v(t.exclusions) },
+    { h: 'Правки', p: v(t.revisions) },
+    { h: 'Сроки и зависимости', p: `${v(t.timeline)}. Зависимости: ${v(t.dependencies)}` },
+    { h: 'Действия клиента', p: v(t.clientActions) },
+    { h: 'Стоимость услуг (из принятой версии)', p: [t.serviceOneTimeKop !== null ? `Разовые работы: ${formatKop(t.serviceOneTimeKop)}` : null, t.serviceMonthlyKop !== null ? `Ежемесячные работы: ${formatKop(t.serviceMonthlyKop)} в месяц` : null].filter(Boolean).join('\n') || '—' },
+    { h: 'Рекламный бюджет и внешние расходы клиента', p: t.externalBudgets.map((b) => `${b.label}: ${formatKop(b.amountKop)}${b.period ? `, ${b.period}` : ''} — ${b.paidBy}`).join('\n') || 'Нет' },
+    { h: 'Оплата', p: `${v(t.payment)}. Фактический статус: ${e.paymentStatus}` },
+    { h: 'Подтверждённые обещания', p: t.confirmedPromises.map((x) => `${x.what} (${x.byRole})`).join('\n') || 'Нет' },
+    { h: 'Проверка готовности', table: [['Пункт', 'Статус', 'Комментарий / отклонение'], ...e.checks.map((c) => [c.item, c.status, c.note ?? '—'])] },
+    { h: 'Что ещё блокирует передачу', p: e.blockers.length ? e.blockers.join('\n') : 'Блокеров нет' },
+  ];
+}
+
+export function handoffDocx(e: HandoffExport) {
+  return blocksToDocx(`Пакет передачи в работу — ${e.company}`, 'Для команды проекта. Без ставок, затрат и комиссии. Локальный экспорт прототипа.', handoffBlocks(e));
+}
+
+export function internalAuditDocx(e: ReturnType<typeof exportInternalAudit> & { setNumber?: number }) {
+  const blocks: Block[] = [
+    { p: `Комплект №${e.setNumber ?? '—'}. Маршрут: ${e.route ?? '—'}; глубина: ${e.depth}`, muted: true },
+    { h: 'Направления', table: [['Направление', 'Статус', 'Причина / доступ'], ...e.modules.map((m) => [m.module, m.status, [m.reason, m.accessNeeded && `${m.accessNeeded} (${m.accessOwnerRole ?? '?'})`].filter(Boolean).join('; ') || '—'])] },
+    { h: 'Все находки (включая непроверенные)', table: [['Код', 'Находка', 'Проверка', 'В клиентский отчёт'], ...e.findings.map((f) => [f.code, f.title, f.verification, f.clientReady ? 'да' : 'нет'])] },
+    ...e.findings.map((f) => ({ p: `${f.code}: ${f.observation}${f.reviewComment ? ` — проверка: ${f.reviewComment}` : ''}${f.limitation ? ` — ограничение: ${f.limitation}` : ''}` })),
+    { h: 'Путь заявки', table: [['Уровень', 'Статус', 'Чем подтверждено'], ...e.leadPath.map((l) => [l.level, l.status, l.note ?? '—'])] },
+    { h: 'Открытые вопросы', p: e.openQuestions.map((q) => `${q.question} → ${q.to}`).join('\n') || 'Нет' },
+  ];
+  return blocksToDocx('Внутренний аудит команды', e.note, blocks);
 }

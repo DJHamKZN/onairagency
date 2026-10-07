@@ -190,6 +190,12 @@ export interface ProposedChange extends BaseRecord {
   decision: { by: string; actingRole: Role; at: ISODateTime; comment: string | null } | null;
   /** Предлагаемый адресат вопроса (для clarification). */
   addressedToRole: string | null;
+  /** Откуда предложение: разбор по ключевым словам или импорт структурированного результата (не ИИ этого прототипа). */
+  origin?: 'keyword_rules' | 'structured_import';
+  /** Отпечаток для защиты от дублей при повторной обработке. */
+  fingerprint?: string;
+  /** Цитата найдена в тексте источника дословно. */
+  quoteFound?: boolean;
 }
 
 export interface Conflict extends BaseRecord {
@@ -233,6 +239,8 @@ export interface Clarification extends BaseRecord {
   sourceId: string | null;
   status: 'open' | 'answered' | 'dropped';
   answer: string | null;
+  /** Поле карточки, к которому относится вопрос (для «недостающих вопросов» без дублей). */
+  factKey?: FactKey | null;
 }
 
 export interface Task extends BaseRecord {
@@ -343,6 +351,9 @@ export interface AuditDeliverable {
   lastGeneratedAt: ISODateTime | null;
   lastGeneratedBy: string | null;
   limitationsNote: string | null;
+  /** Сохранённая версия документа (неизменяемый снимок) и номер комплекта. */
+  snapshotId?: string | null;
+  setNumber?: number | null;
 }
 
 export type ClaimType = 'observation' | 'source_statement' | 'calculation' | 'interpretation' | 'hypothesis' | 'unknown';
@@ -442,7 +453,12 @@ export interface CostLine {
   amountKop: Kop | null; // для фиксированных строк
   /** Ноль допустим только с явной причиной. */
   zeroReason: string | null;
+  /** Происхождение оценки. «confirmed» ставится только действием «Проверить оценку». */
   confidence: 'preliminary' | 'specialist_estimate' | 'confirmed';
+  verifiedBy?: string | null;
+  verifiedAt?: ISODateTime | null;
+  /** Для строк без привязки к работе: разовая или ежемесячная. Для привязанных — берётся из работы. */
+  recurrence?: 'one_time' | 'monthly';
 }
 
 export interface CommissionRule extends BaseRecord {
@@ -456,6 +472,8 @@ export interface CommissionRule extends BaseRecord {
   condition: string | null;
   recipientRole: string; // демо-роль, без персональных данных
   ownerApproved: boolean;
+  /** К каким работам применяется: разовые, ежемесячные или обе части. По умолчанию — разовые. */
+  appliesTo?: 'one_time' | 'monthly' | 'both';
 }
 
 export interface ExternalBudget {
@@ -478,7 +496,12 @@ export interface EstimateVersion extends BaseRecord {
   taxModel: { status: 'not_set' | 'set'; description: string | null };
   priceMode: 'formula' | 'manual';
   manualPriceKop: Kop | null;
-  discount: { amountKop: Kop; reason: string } | null;
+  /** Цена ежемесячных работ, если режим цены ручной. */
+  manualMonthlyPriceKop?: Kop | null;
+  /** Скидка применяется к цене разовых работ (appliesTo по умолчанию one_time). */
+  discount: { amountKop: Kop; reason: string; appliesTo?: 'one_time' | 'monthly' } | null;
+  /** Копия правила комиссии на момент утверждения — утверждённый расчёт не меняется при правке правила. */
+  frozenRule?: CommissionRule | null;
   externalBudgets: ExternalBudget[];
 }
 
@@ -520,6 +543,8 @@ export interface ProposalVersion extends BaseRecord {
   content: ProposalContent;
   /** Снимок клиентских данных при фиксации отправки. */
   frozenSnapshotId: string | null;
+  /** Замороженные при утверждении работы: экспорт и передача берут данные отсюда, а не из живых записей. */
+  frozenWorks?: WorkItem[] | null;
   sent: { recipientLabel: string; date: ISODate; channelNote: string; recordedBy: string; at: ISODateTime; demo: true } | null;
   accepted: { date: ISODate; confirmationSource: string; recordedBy: string; at: ISODateTime } | null;
   rejected: { date: ISODate; reason: string; recordedBy: string; at: ISODateTime } | null;
@@ -565,20 +590,20 @@ export interface Approval extends BaseRecord {
   actingRole: 'owner';
   approvedAt: ISODateTime;
   comment: string | null;
-  status: 'active' | 'revoked';
+  /** superseded — версия заменена новой; решение по ней сохраняется в истории. */
+  status: 'active' | 'revoked' | 'superseded';
   revoked: { at: ISODateTime; by: string; reason: string; categories: ApprovalCategory[]; details: string[] } | null;
 }
 
 /* ---------- Запуск ---------- */
 
+/**
+ * Проверки готовности к запуску. Договорённости (объём, результат, исключения, правки, стоимость, зависимости)
+ * сюда не вводятся — они берутся из принятой версии КП; проджект только сверяет их и фиксирует отклонения.
+ */
 export type ChecklistKey =
-  | 'goal_first_result'
-  | 'accepted_scope'
+  | 'terms_reconciled'
   | 'contract'
-  | 'payment_status'
-  | 'scope_exclusions'
-  | 'revisions'
-  | 'promises'
   | 'materials'
   | 'findings'
   | 'open_risks'
@@ -591,11 +616,15 @@ export type ChecklistKey =
   | 'calendar'
   | 'acceptance_baseline';
 
+export type ChecklistStatus = 'open' | 'ready' | 'deviation' | 'deviation_accepted' | 'not_applicable';
+
 export interface ChecklistItem {
   key: ChecklistKey;
-  status: 'open' | 'done' | 'not_applicable';
+  status: ChecklistStatus;
   note: string | null;
   naReason: string | null;
+  /** Решение владельца принять отклонение как известный риск. */
+  deviationDecision?: { by: string; at: ISODateTime; reason: string } | null;
   updatedBy: string | null;
   updatedAt: ISODateTime | null;
 }
@@ -684,7 +713,7 @@ export interface ChangeEvent {
 export interface Snapshot {
   id: string;
   opportunityId: string;
-  kind: 'approval' | 'proposal_sent';
+  kind: 'approval' | 'proposal_sent' | 'audit_brief' | 'audit_client' | 'audit_internal';
   hash: string;
   data: unknown;
   createdAt: ISODateTime;

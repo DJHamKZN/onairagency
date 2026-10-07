@@ -115,12 +115,12 @@ describe('Серверный контроль доступа (22)', () => {
     assert.equal(r.status, 200);
     const text = JSON.stringify(r.body);
     assert.ok(!text.includes('250000'), 'ставка специалиста');
-    assert.ok(!text.includes('Партнёрская комиссия'), 'правило комиссии');
+    assert.ok(!text.includes('Комиссия за привлечение (тестовая)'), 'правило комиссии');
+    assert.ok(!/"frozenRule":\{/.test(text), 'замороженное правило комиссии не передаётся');
     assert.ok(!/"costKop":\d/.test(text) && !/"remainderKop":\d/.test(text) && !/"commissionKop":\d/.test(text));
     assert.ok(r.body.estimates[0].lines.every((l: { rateKop: number | null }) => l.rateKop === null));
     const hist = JSON.stringify((await pm.req('GET', `/api/opportunities/${ids.C}/history`)).body);
     assert.ok(!hist.includes('250000'), 'ставки не утекают через журнал');
-    assert.equal((await pm.req('GET', `/api/opportunities/${ids.C}/export/audit/internal_docx`)).status, 403);
     // владелец явно разрешает — PM видит
     await owner.cmd(ids.C, { type: 'setPmCostVisibility', payload: { visible: true, comment: 'Решение владельца (демо)' } });
     const r2 = await pm.req('GET', `/api/opportunities/${ids.C}`);
@@ -147,6 +147,49 @@ describe('Серверный контроль доступа (22)', () => {
   it('принимающий PM не видит возможность до стадии запуска', async () => {
     const rpm = await new Client().login('rpm');
     assert.equal((await rpm.req('GET', `/api/opportunities/${ids.A}`)).status, 404);
+  });
+});
+
+describe('Финансы, передача и комплекты документов через HTTP', () => {
+  it('специалист не получает финансы ни в карточке, ни в журнале, ни в экспорте КП', async () => {
+    const spec = await new Client().login('spec');
+    const v = (await spec.req('GET', `/api/opportunities/${ids.C}`)).body;
+    const text = JSON.stringify(v);
+    for (const leak of ['200000', '"discount":{', '"targetMarginBp":3000', 'Комиссия за привлечение', '"externalBudgets":[{'])
+      assert.ok(!text.includes(leak), `утечка: ${leak}`);
+    assert.equal(v.computed.estimates[v.estimates[0].id].priceKop, null, 'цена тоже скрыта от специалиста');
+    const hist = JSON.stringify((await spec.req('GET', `/api/opportunities/${ids.C}/history`)).body);
+    assert.ok(!hist.includes('200000'));
+    const proposalId = (await new Client().login('owner').then((o) => o.req('GET', `/api/opportunities/${ids.C}`))).body.proposals[0].id;
+    assert.equal((await spec.req('GET', `/api/opportunities/${ids.C}/export/proposal/${proposalId}?format=json`)).status, 403);
+  });
+
+  it('история изменений с момента версии: видно, что изменил другой пользователь', async () => {
+    const owner = await new Client().login('owner');
+    const before = (await owner.req('GET', `/api/opportunities/${ids.B}`)).body;
+    await owner.cmd(ids.B, { type: 'addClarification', payload: { question: 'Вопрос для истории', addressedToRole: 'Клиент', impacts: ['scope'] } });
+    const since = (await owner.req('GET', `/api/opportunities/${ids.B}/history?since=${encodeURIComponent(before.updatedAt)}`)).body;
+    assert.ok(since.some((e: { action: string }) => e.action === 'added'));
+    assert.ok(since.every((e: { at: string }) => e.at > before.updatedAt));
+  });
+
+  it('полный аудит: выжимка, клиентский и внутренний аудит сохраняются одним комплектом и скачиваются из сохранённой версии', async () => {
+    const owner = await new Client().login('owner');
+    const r0 = await owner.req('GET', `/api/opportunities/${ids.B}/export/audit/client_brief_pdf`);
+    assert.equal(r0.status, 404, 'полный аудит не включён');
+    await owner.cmd(ids.B, { type: 'setRoute', payload: { type: 'C', rationale: 'Полный аудит по согласованию', depth: 'external_evidence', fullMarketingAudit: true } });
+    assert.equal((await owner.req('GET', `/api/opportunities/${ids.B}/export/audit/client_detailed_docx`)).status, 422, 'до сохранения комплекта файл не формируется');
+    const r = await owner.cmd(ids.B, { type: 'saveAuditDeliverables', payload: { limitationsNote: 'Демо' } });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const ds = r.body.audit.deliverables as { kind: string; snapshotId: string; setNumber: number }[];
+    assert.equal(ds.length, 3);
+    assert.ok(ds.every((d) => d.snapshotId && d.setNumber === 1));
+    for (const kind of ['client_detailed_docx', 'internal_docx']) {
+      const f = await owner.req('GET', `/api/opportunities/${ids.B}/export/audit/${kind}`);
+      assert.equal(f.status, 200, kind);
+      assert.equal(Buffer.from(f.body as ArrayBuffer).subarray(0, 2).toString(), 'PK', `${kind}: настоящий DOCX (zip)`);
+    }
+    assert.equal(state.repo.snapshots().filter((x) => x.kind.startsWith('audit_')).length, 3);
   });
 });
 

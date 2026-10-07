@@ -230,3 +230,96 @@ describe('Диагностика и доказательства (6, 7, 24, 28)'
     expectThrows(() => s.run(id, { type: 'setLeadPath', payload: { level: 'processing', status: 'confirmed_by_client_data', note: '' } }, 'lead', 'lead_specialist'), /какими данными/);
   });
 });
+
+describe('Основной сценарий: письмо → предложения с цитатами → обещания → вопросы (5)', () => {
+  const LETTER = `Добрый день! Нужен лендинг для акции.
+Цель бизнеса: Собрать заявки на акцию до конца месяца.
+Запуск нужен 1 ноября 2026 года.
+Мы подготовим макет за 3 дня.
+Хотели бы скидку за быстрый старт.
+Если получится, запустим рекламу сразу.`;
+
+  function withLetter() {
+    const s = seeded();
+    const id = s.ids.A;
+    s.run(id, { type: 'addSource', payload: { kind: 'email', title: 'Демо-письмо 4', declaredCompany: 'Линия Плюс', receivedAt: '2026-10-05', text: LETTER, link: null, originalFilename: null, replacesSourceId: null } });
+    const src = s.get(id).sources.at(-1)!;
+    s.run(id, { type: 'parseSource', payload: { sourceId: src.id } });
+    return { s, id, src };
+  }
+
+  it('Письмо даёт предложения с дословными цитатами; пожелание клиента — не обещание; обещание агентства — только кандидат на проверку человеком', () => {
+    const { s, id, src } = withLetter();
+    const pcs = s.get(id).proposedChanges.filter((p) => p.sourceId === src.id);
+    assert.ok(pcs.length >= 4);
+    assert.ok(pcs.every((p) => p.quoteFound === true && p.origin === 'keyword_rules'));
+    assert.ok(pcs.some((p) => p.kind === 'fact' && p.key === 'deadline' && p.value === '2026-11-01'));
+    assert.ok(pcs.some((p) => p.kind === 'client_wish'));
+    assert.ok(pcs.some((p) => p.kind === 'conditional'));
+    const promise = pcs.find((p) => p.kind === 'promise_candidate')!;
+    assert.match(String(promise.value), /подготовим макет/);
+    s.run(id, { type: 'decideProposedChange', payload: { id: promise.id, accept: true } });
+    const pr = s.get(id).promises.at(-1)!;
+    assert.equal(pr.status, 'discussed', 'человек подтверждает обещание отдельным действием');
+    s.run(id, { type: 'setPromiseStatus', payload: { id: pr.id, status: 'confirmed', reason: 'Подтверждено владельцем' } });
+    assert.equal(s.get(id).promises.at(-1)!.status, 'confirmed');
+  });
+
+  it('Повторная обработка не создаёт дублей и не затирает принятые сведения', () => {
+    const { s, id, src } = withLetter();
+    const goal = s.get(id).proposedChanges.find((p) => p.sourceId === src.id && p.key === 'business_goal')!;
+    s.run(id, { type: 'decideProposedChange', payload: { id: goal.id, accept: true } });
+    const countBefore = s.get(id).proposedChanges.length;
+    const factBefore = JSON.stringify(s.get(id).facts.find((f) => f.key === 'business_goal'));
+    s.run(id, { type: 'parseSource', payload: { sourceId: src.id } });
+    s.run(id, { type: 'parseSource', payload: { sourceId: src.id } });
+    assert.equal(s.get(id).proposedChanges.length, countBefore, 'новых дублей нет');
+    assert.equal(JSON.stringify(s.get(id).facts.find((f) => f.key === 'business_goal')), factBefore, 'принятый факт не изменился');
+    const ev = s.repo.events(id).filter((e) => e.action === 'keyword_parsed').at(-1)!;
+    const fromLetter = s.get(id).proposedChanges.filter((p) => p.sourceId === src.id).length;
+    assert.deepEqual(ev.after, { added: 0, skippedDuplicates: fromLetter, alreadyInCard: 0, quoteNotFound: 0 });
+    // новая версия источника с тем же текстом + дополнение: старые предложения не повторяются
+    s.run(id, { type: 'updateSourceText', payload: { sourceId: src.id, text: LETTER + '\nЛПР: Контакт 2, маркетолог.', reason: 'Дополнение письма' } });
+    const src2 = s.get(id).sources.at(-1)!;
+    s.run(id, { type: 'parseSource', payload: { sourceId: src2.id } });
+    const added = s.get(id).proposedChanges.filter((p) => p.sourceId === src2.id);
+    assert.equal(added.length, 1);
+    assert.equal(added[0].key, 'decision_maker');
+  });
+
+  it('Импорт структурированного результата: проверка формата, отметка непроверенной цитаты, без дублей, без названия «ИИ»', () => {
+    const { s, id, src } = withLetter();
+    expectThrows(() => s.run(id, { type: 'importStructuredProposals', payload: { sourceId: src.id, items: [{ kind: 'fact', key: null, value: 'x', excerpt: '' } as never] } }), /ничего не импортировано/);
+    s.run(id, { type: 'importStructuredProposals', payload: { sourceId: src.id, items: [
+      { kind: 'fact', key: 'product', value: 'Лендинг акции', excerpt: 'Нужен лендинг для акции.' },
+      { kind: 'fact', key: 'audience', value: 'Действующие клиенты', excerpt: 'Аудитория — действующие клиенты' },
+    ] } });
+    const imported = s.get(id).proposedChanges.filter((p) => p.origin === 'structured_import');
+    assert.equal(imported.length, 2);
+    assert.equal(imported.find((p) => p.key === 'product')!.quoteFound, true);
+    const bad = imported.find((p) => p.key === 'audience')!;
+    assert.equal(bad.quoteFound, false);
+    assert.match(bad.note, /Цитата не найдена/);
+    assert.ok(imported.every((p) => p.status === 'pending'), 'всё принимает человек');
+    s.run(id, { type: 'importStructuredProposals', payload: { sourceId: src.id, items: [{ kind: 'fact', key: 'product', value: 'Лендинг акции', excerpt: 'Нужен лендинг для акции.' }] } });
+    assert.equal(s.get(id).proposedChanges.filter((p) => p.origin === 'structured_import').length, 2, 'повторный импорт без дублей');
+    assert.ok(!/ИИ|AI/.test(imported[0].note));
+  });
+
+  it('Недостающие вопросы создаются по незаполненным значимым полям без дублей; созвон и полный бриф не обязательны', () => {
+    const { s, id, src } = withLetter();
+    for (const p of s.get(id).proposedChanges.filter((x) => x.status === 'pending' && x.kind === 'fact' && x.sourceId === src.id)) s.run(id, { type: 'decideProposedChange', payload: { id: p.id, accept: true } });
+    s.run(id, { type: 'createMissingQuestions', payload: {} });
+    s.run(id, { type: 'createMissingQuestions', payload: {} });
+    const qs = s.get(id).clarifications.filter((c) => c.factKey);
+    const keys = qs.map((c) => c.factKey);
+    assert.equal(new Set(keys).size, keys.length, 'без дублей');
+    assert.ok(keys.includes('budget_mention'), 'неизвестный бюджет — вопрос, а не ноль');
+    assert.ok(!keys.includes('deadline') && !keys.includes('business_goal'), 'то, что есть в письме, не спрашиваем');
+    // достаточно письма: решение и переход без созвона
+    s.run(id, { type: 'setReadiness', payload: { decision: 'enough_for_proposal', justification: 'Письма достаточно: результат, срок и материалы понятны' } });
+    s.run(id, { type: 'moveStage', payload: { target: 'preparing_proposal', reason: 'Сведений из письма достаточно' } });
+    assert.equal(s.get(id).stage, 'preparing_proposal');
+    assert.equal(s.get(id).budget.minKop, null);
+  });
+});

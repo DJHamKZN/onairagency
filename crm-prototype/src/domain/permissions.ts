@@ -2,7 +2,7 @@
  * Матрица прав. Применяется на СЕРВЕРЕ к каждому запросу. Интерфейс использует её только для подсказок.
  */
 import type { CommandType } from './commands';
-import { computeEstimate } from './economics';
+import { computeFor, type EstimateResult } from './economics';
 import type { Opportunity, Role, User } from './types';
 import { approvalBlockers } from './commands';
 import { currentAcceptance, currentAuthorization } from './launch';
@@ -60,7 +60,11 @@ export const COMMAND_ROLES: Record<CommandType, Role[]> = {
   addFinding: ['owner', 'presale_pm', 'lead_specialist', 'specialist'],
   updateFinding: ['owner', 'presale_pm', 'lead_specialist', 'specialist'],
   reviewEvidence: ['owner', 'lead_specialist'],
-  recordDeliverableGenerated: OWNER_PM_LEAD,
+  saveAuditDeliverables: OWNER_PM_LEAD,
+  importStructuredProposals: OWNER_PM_LEAD,
+  createMissingQuestions: OWNER_PM_LEAD,
+  verifyCostLine: OWNER_PM_LEAD,
+  decideDeviation: ['owner'],
   addWorkItem: OWNER_PM_LEAD,
   updateWorkItem: OWNER_PM_LEAD,
   removeWorkItem: OWNER_PM_LEAD,
@@ -128,17 +132,25 @@ export const ROLE_ALL = ALL;
 /* ---------- Представление по ролям (серверная редакция данных) ---------- */
 
 export interface Computed {
-  estimates: Record<string, ReturnType<typeof computeEstimate> | { restricted: true; priceKop: number | null; complete: boolean; issues: { message: string }[] }>;
+  estimates: Record<string, EstimateResult | RestrictedEstimate>;
+}
+
+export interface RestrictedEstimate {
+  restricted: true;
+  priceKop: number | null;
+  monthlyPriceKop: number | null;
+  filled: boolean;
+  verified: boolean;
+  unverifiedLines: number;
+  unknownLines: number;
+  issues: { message: string }[];
 }
 
 export type OpportunityView = Opportunity & { computed: Computed; viewRole: Role; restricted: string[] };
 
 function computeAll(opp: Opportunity) {
-  const out: Record<string, ReturnType<typeof computeEstimate>> = {};
-  for (const e of opp.estimates) {
-    const rule = e.commissionRuleId ? opp.commissionRules.find((r) => r.id === e.commissionRuleId) ?? null : null;
-    out[e.id] = computeEstimate(e, rule);
-  }
+  const out: Record<string, EstimateResult> = {};
+  for (const e of opp.estimates) out[e.id] = computeFor(opp, e);
   return out;
 }
 
@@ -159,12 +171,16 @@ export function viewFor(opp: Opportunity, user: User, role: Role): OpportunityVi
   for (const [id, r] of Object.entries(full))
     restrictedComputed[id] = {
       restricted: true,
-      priceKop: role === 'specialist' ? null : r.priceKop,
-      complete: r.complete,
+      priceKop: role === 'specialist' ? null : r.oneTime.priceKop,
+      monthlyPriceKop: role === 'specialist' || !r.monthly.present ? null : r.monthly.priceKop,
+      filled: r.filled,
+      verified: r.verified,
+      unverifiedLines: r.oneTime.unverifiedLines + r.monthly.unverifiedLines,
+      unknownLines: r.oneTime.unknownLines + r.monthly.unknownLines,
       issues: role === 'specialist'
         ? []
         : r.issues.map((i) => ({
-            message: ['hours', 'lines', 'manualPriceKop', 'discount', 'amountKop', 'zeroReason', 'hoursMin'].includes(i.field)
+            message: ['hours', 'lines', 'manualPriceKop', 'manualMonthlyPriceKop', 'discount', 'amountKop', 'zeroReason', 'hoursMin', 'confidence'].includes(i.field)
               ? i.message
               : 'Не заполнен параметр, который задаёт владелец (ставка, комиссия, маржа или налоговая модель)',
           })),
@@ -173,9 +189,10 @@ export function viewFor(opp: Opportunity, user: User, role: Role): OpportunityVi
 
   // Ставки, суммы, комиссия, маржа — убрать.
   o.commissionRules = [];
-  o.restricted.push('Себестоимость, ставки, комиссия и маржа скрыты сервером для этой роли');
+  o.restricted.push('Себестоимость, ставки, комиссия за привлечение и маржа удалены из данных для этой роли');
   for (const e of o.estimates) {
     e.commissionRuleId = null;
+    e.frozenRule = null;
     e.targetMarginBp = null;
     e.targetMarginSource = null;
     e.taxModel = { status: e.taxModel.status, description: null };
@@ -184,6 +201,7 @@ export function viewFor(opp: Opportunity, user: User, role: Role): OpportunityVi
       .map((l) => ({ ...l, rateKop: role === 'specialist' && l.performerUserId === user.id ? l.rateKop : null, amountKop: null }));
     if (role === 'specialist') {
       e.manualPriceKop = null;
+      e.manualMonthlyPriceKop = null;
       e.discount = null;
       e.externalBudgets = [];
     }

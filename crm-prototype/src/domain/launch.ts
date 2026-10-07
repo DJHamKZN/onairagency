@@ -1,32 +1,41 @@
+import { worksOf } from './approval';
+import { computeFor } from './economics';
 import { hashOf } from './hash';
-import type { ChecklistItem, ChecklistKey, LaunchChecklist, Opportunity, ProposalVersion } from './types';
+import type { ChecklistItem, ChecklistKey, ChecklistStatus, LaunchChecklist, Opportunity, ProposalVersion } from './types';
 
+/**
+ * Передача в работу. Договорённости (объём, результат, исключения, правки, стоимость, зависимости, оплата, сроки)
+ * берутся из КОНКРЕТНОЙ принятой версии КП и не вводятся заново. Проджект проверяет готовность и фиксирует отклонения.
+ */
 export const CHECKLIST_LABELS: Record<ChecklistKey, string> = {
-  goal_first_result: 'Цель и первый результат',
-  accepted_scope: 'Принятое КП и объём',
+  terms_reconciled: 'Договорённости из принятой версии КП сверены с реальностью',
   contract: 'Договор',
-  payment_status: 'Фактический статус условий оплаты',
-  scope_exclusions: 'Состав и исключения',
-  revisions: 'Правки',
-  promises: 'Обещания агентства разобраны',
-  materials: 'Материалы клиента',
-  findings: 'Выводы диагностики',
-  open_risks: 'Открытые риски',
+  materials: 'Материалы клиента получены',
+  findings: 'Выводы диагностики переданы',
+  open_risks: 'Открытые риски разобраны',
   roles: 'Роли агентства и клиента',
-  approvers: 'Согласующие',
+  approvers: 'Согласующие со стороны клиента',
   communication: 'Порядок общения',
   accesses: 'Доступы (ссылка на защищённое место и ответственный, без паролей)',
-  performers: 'Исполнители',
-  capacity: 'Подтверждённая загрузка',
+  performers: 'Исполнители назначены',
+  capacity: 'Загрузка исполнителей подтверждена',
   calendar: 'Календарь первого этапа',
-  acceptance_baseline: 'Критерии приёмки и исходные показатели',
+  acceptance_baseline: 'Исходные показатели для приёмки зафиксированы',
+};
+
+export const CHECKLIST_STATUS_LABELS: Record<ChecklistStatus, string> = {
+  open: 'Не проверено',
+  ready: 'Готово',
+  deviation: 'Отклонение',
+  deviation_accepted: 'Отклонение принято владельцем',
+  not_applicable: 'Неприменимо',
 };
 
 export const CHECKLIST_KEYS = Object.keys(CHECKLIST_LABELS) as ChecklistKey[];
 
 export function emptyChecklist(): LaunchChecklist {
   return {
-    items: CHECKLIST_KEYS.map((key): ChecklistItem => ({ key, status: 'open', note: null, naReason: null, updatedBy: null, updatedAt: null })),
+    items: CHECKLIST_KEYS.map((key): ChecklistItem => ({ key, status: 'open', note: null, naReason: null, deviationDecision: null, updatedBy: null, updatedAt: null })),
     payment: { status: 'unknown', note: null },
     linkSharedAt: null,
   };
@@ -42,11 +51,73 @@ export function latestMainProposal(opp: Opportunity): ProposalVersion | null {
   return opp.proposals.reduce<ProposalVersion | null>((a, p) => (!a || p.number > a.number ? p : a), null);
 }
 
-export function packageHash(opp: Opportunity): string {
+export function acceptedProposal(opp: Opportunity): ProposalVersion | null {
   const latest = latestMainProposal(opp);
+  return latest && latest.status === 'accepted' ? latest : null;
+}
+
+export interface AgreedTerms {
+  proposalId: string;
+  versionNumber: number;
+  acceptedDate: string | null;
+  confirmationSource: string | null;
+  frozenSnapshotId: string | null;
+  works: { id: string; title: string; quantity: number | null; unit: string | null; expectedResult: string | null; acceptanceCriterion: string | null; recurrence: 'one_time' | 'monthly' }[];
+  resultAndAcceptance: string | null;
+  exclusions: string | null;
+  revisions: string | null;
+  timeline: string | null;
+  dependencies: string | null;
+  clientActions: string | null;
+  payment: string | null;
+  freeWork: string | null;
+  extraWorkProcedure: string | null;
+  serviceOneTimeKop: number | null;
+  serviceMonthlyKop: number | null;
+  discountKop: number | null;
+  externalBudgets: { label: string; amountKop: number | null; period: string | null; paidBy: string }[];
+  confirmedPromises: { what: string; byRole: string }[];
+}
+
+/** Договорённости из принятой версии КП (только чтение). null — принятой версии нет. */
+export function agreedTerms(opp: Opportunity): AgreedTerms | null {
+  const p = acceptedProposal(opp);
+  if (!p) return null;
+  const est = opp.estimates.find((e) => e.id === p.estimateVersionId);
+  const r = est ? computeFor(opp, est) : null;
+  const c = p.content;
+  return {
+    proposalId: p.id,
+    versionNumber: p.number,
+    acceptedDate: p.accepted?.date ?? null,
+    confirmationSource: p.accepted?.confirmationSource ?? null,
+    frozenSnapshotId: p.frozenSnapshotId,
+    works: worksOf(opp, p).filter((w) => c.workItemIds.includes(w.id)).map((w) => ({
+      id: w.id, title: w.title, quantity: w.quantity, unit: w.unit, expectedResult: w.expectedResult, acceptanceCriterion: w.acceptanceCriterion, recurrence: w.recurrence,
+    })),
+    resultAndAcceptance: c.resultAndAcceptance,
+    exclusions: c.exclusions,
+    revisions: c.revisions,
+    timeline: c.timeline,
+    dependencies: c.dependencies,
+    clientActions: c.clientActions,
+    payment: c.payment,
+    freeWork: c.freeWork,
+    extraWorkProcedure: c.extraWorkProcedure,
+    serviceOneTimeKop: r?.oneTime.priceKop ?? null,
+    serviceMonthlyKop: r?.monthly.present ? r.monthly.priceKop : null,
+    discountKop: est?.discount?.amountKop ?? null,
+    externalBudgets: (est?.externalBudgets ?? []).map((b) => ({ label: b.label, amountKop: b.amountKop, period: b.period, paidBy: b.paidBy === 'client_direct' ? 'Оплачивает клиент напрямую' : 'Через агентство' })),
+    confirmedPromises: opp.promises.filter((x) => x.status === 'confirmed').map((x) => ({ what: x.what, byRole: x.byRole })),
+  };
+}
+
+export function packageHash(opp: Opportunity): string {
+  const accepted = acceptedProposal(opp);
   return hashOf({
-    acceptedProposalId: latest && latest.status === 'accepted' ? latest.id : null,
-    items: opp.launch.items.map((i) => ({ k: i.key, s: i.status, n: i.note, r: i.naReason })),
+    acceptedProposalId: accepted?.id ?? null,
+    acceptedSnapshot: accepted?.frozenSnapshotId ?? null,
+    items: opp.launch.items.map((i) => ({ k: i.key, s: i.status, n: i.note, r: i.naReason, d: i.deviationDecision ?? null })),
     payment: opp.launch.payment,
     promises: opp.promises.map((p) => ({ id: p.id, s: p.status, w: p.what })),
     receivingPm: opp.receivingPmUserId,
@@ -62,9 +133,10 @@ export function packageBlockers(opp: Opportunity): string[] {
   const b: string[] = [];
   const latest = latestMainProposal(opp);
   if (!latest || latest.status !== 'accepted') b.push('Последняя версия КП не принята клиентом');
-  else if (!activeApprovalFor(opp, latest.id)) b.push('У принятой версии КП нет действующего утверждения экономики владельцем');
+  else if (!activeApprovalFor(opp, latest.id)) b.push('У принятой версии КП нет утверждения экономики владельцем');
   for (const i of opp.launch.items) {
-    if (i.status === 'open') b.push(`Не выполнено: «${CHECKLIST_LABELS[i.key]}»`);
+    if (i.status === 'open') b.push(`Не проверено: «${CHECKLIST_LABELS[i.key]}»`);
+    if (i.status === 'deviation') b.push(`Отклонение не устранено: «${CHECKLIST_LABELS[i.key]}» — ${i.note ?? ''}. Устраните, примите владельцем как риск или создайте новую версию КП, если меняются договорённости`);
     if (i.status === 'not_applicable' && !i.naReason?.trim()) b.push(`«${CHECKLIST_LABELS[i.key]}»: «неприменимо» без причины`);
   }
   if (opp.launch.payment.status === 'unknown') b.push('Фактический статус условий оплаты не указан');
