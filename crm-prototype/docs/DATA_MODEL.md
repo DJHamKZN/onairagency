@@ -71,3 +71,19 @@ User          роли; пароль — только scrypt-хэш на сер�
 | `settings` | одна строка, version |
 
 **Компромисс прототипа:** вложенные сущности возможности хранятся в JSON агрегата. Ссылочная целостность внутри агрегата проверяется доменной логикой и валидатором резервной копии, а не внешними ключами SQL. Для промышленной версии стоит разнести ключевые сущности (КП, утверждения, находки) по отдельным таблицам с FK. Optimistic concurrency сейчас на уровне всей возможности: параллельная правка разных разделов одной карточки тоже даёт конфликт (без потери данных).
+
+## Изменения 07.10.2026
+
+- `CostLine.confidence` — происхождение оценки (`preliminary`, `specialist_estimate`); `confirmed` ставит только команда
+  `verifyCostLine` (с `verifiedBy`, `verifiedAt`); изменение значения снимает проверку. `CostLine.recurrence` — часть
+  (разовые/ежемесячные) для строк без привязки к работе; привязанные строки наследуют периодичность работы.
+- `EstimateVersion.manualMonthlyPriceKop`, `discount.appliesTo`, `frozenRule` (копия правила комиссии на момент утверждения).
+- `CommissionRule.appliesTo` — разовые, ежемесячные или обе части. Термины: P — цена услуг (выручка агентства); комиссия за
+  привлечение — выплата из выручки; рекламный бюджет и внешние расходы клиента — `externalBudgets`, вне P, C и базы комиссии.
+- Утверждение замораживает версию: `ProposalVersion.frozenWorks`, расчёт `status = locked`. `Approval.status = superseded`
+  — версия заменена новой, решение сохранено. Различия новой версии с последней утверждённой — `diffMaterial`.
+- `LaunchChecklist.items` — только проверки готовности (`open | ready | deviation | deviation_accepted | not_applicable`),
+  `deviationDecision` — решение владельца. Договорённости не хранятся в чек-листе: `agreedTerms()` строит их из принятой версии.
+- `ProposedChange.origin` (`keyword_rules` | `structured_import`), `fingerprint` (защита от дублей), `quoteFound`.
+- `Clarification.factKey` — к какому полю относится вопрос (для «недостающих вопросов» без дублей).
+- `AuditDeliverable.snapshotId`, `setNumber`; новые виды снимков `audit_brief`, `audit_client`, `audit_internal`.
