@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { api, download } from '../../api';
+import { isWebDemo } from '../../mode';
 import { approvalBlockers } from '../../../domain/commands';
 import type { ClientProposalExport } from '../../../domain/clientExport';
 import { formatKop } from '../../../domain/money';
@@ -140,7 +141,9 @@ function VersionPanel({ p, v, run }: { p: ProposalVersion } & Pick<TabProps, 'v'
       <h3 style={{ marginTop: 12 }}>Действия</h3>
       <div className="row">
         <button className="btn" disabled={gen.busy} onClick={() => void gen.run(async () => setPreview(await api.get<ClientProposalExport>(`/api/opportunities/${v.id}/export/proposal/${p.id}?format=json`)))}>Предпросмотр клиентского документа</button>
-        <button className="btn" disabled={gen.busy} onClick={() => void gen.run(() => download(`/api/opportunities/${v.id}/export/proposal/${p.id}?format=docx`))}>Сформировать КП (Word, локально)</button>
+        {isWebDemo()
+          ? <span className="small muted">Word-файл формируется в локальной версии; в веб-демо — только предпросмотр.</span>
+          : <button className="btn" disabled={gen.busy} onClick={() => void gen.run(() => download(`/api/opportunities/${v.id}/export/proposal/${p.id}?format=docx`))}>Сформировать КП (Word, локально)</button>}
         {owner && p.status === 'draft' && <button className="btn primary" onClick={() => setDlg('approve')}>Утвердить версию и расчёт…</button>}
         {p.status === 'approved_for_send' && <button className="btn primary" onClick={() => setDlg('send')}>Зафиксировать отправку…</button>}
         {p.status === 'sent' && <button className="btn primary" onClick={() => setDlg('accept')}>Зафиксировать принятие…</button>}

@@ -2,8 +2,8 @@ import { applyCommand, createOpportunity, type Command, type CreateOpportunityIn
 import { DomainError, type Ctx } from '../src/domain/errors';
 import { canRun, canView, checkActingRole, COMMAND_ROLES, listItemFor, ownerDecisions, viewFor } from '../src/domain/permissions';
 import type { ChangeEvent, Company, Opportunity, Role, User } from '../src/domain/types';
-import { tx } from './db';
-import { ConflictError, newId, type Repo } from './repo';
+import { ConflictError, newId } from '../src/domain/ids';
+import type { RepoLike } from './repoTypes';
 import { clientExportReadiness } from '../src/domain/audit';
 
 export class AccessError extends Error {
@@ -15,7 +15,7 @@ export class AccessError extends Error {
 const ECONOMIC_ENTITIES = new Set(['CostLine', 'EstimateVersion', 'CommissionRule', 'Approval']);
 
 export class Service {
-  constructor(public repo: Repo, public clock: () => string = () => new Date().toISOString()) {}
+  constructor(public repo: RepoLike, public clock: () => string = () => new Date().toISOString()) {}
 
   ctx(user: User, role: Role): Ctx {
     return { userId: user.id, actingRole: role, now: this.clock(), newId };
@@ -60,7 +60,7 @@ export class Service {
     const { opp, events } = createOpportunity({ ...input, isDemo: input.isDemo ?? false }, ctx);
     if (!this.repo.company(input.companyId)) throw new DomainError('validation', 'Компания не найдена — выберите существующую или создайте новую', ['Компания']);
     if (role === 'presale_pm' && !opp.presalePmUserId) opp.presalePmUserId = user.id;
-    tx(this.repo.db, () => {
+    this.repo.transaction(() => {
       this.repo.insertOpportunity(opp);
       this.repo.appendEvents(opp.id, events, user.id, role, ctx.now, opp.isDemo);
     });
@@ -72,7 +72,7 @@ export class Service {
     if (!name?.trim()) throw new DomainError('validation', 'Укажите название компании', ['Компания']);
     const now = this.clock();
     const c: Company = { id: newId('co'), createdAt: now, createdBy: user.id, updatedAt: now, updatedBy: user.id, rev: 1, isDemo, name: name.trim(), note: null };
-    tx(this.repo.db, () => {
+    this.repo.transaction(() => {
       this.repo.insertCompany(c);
       this.repo.appendEvents(null, [{ entityType: 'Company', entityId: c.id, action: 'created', before: null, after: { name: c.name }, reason: null }], user.id, role, now, isDemo);
     });
@@ -118,7 +118,7 @@ export class Service {
         });
         res.events.push({ entityType: 'Opportunity', entityId: created.id, action: 'linked_paid_diagnostic_created', before: null, after: { title: created.title }, reason: 'Покупка диагностики не закрывает внедрение' });
         c.events.push({ entityType: 'Opportunity', entityId: created.id, action: 'linked_to_implementation', before: null, after: { implementation: opp.id }, reason: null });
-        tx(this.repo.db, () => {
+        this.repo.transaction(() => {
           this.repo.saveOpportunity(res.opp, expectedVersion);
           this.repo.insertOpportunity(created!);
           this.repo.appendEvents(created!.id, c.events, user.id, role, ctx.now, created!.isDemo);
@@ -127,7 +127,7 @@ export class Service {
         return { view: viewFor(this.repo.opportunity(id)!, user, role), createdId: created.id };
       }
     }
-    tx(this.repo.db, () => {
+    this.repo.transaction(() => {
       this.repo.saveOpportunity(res.opp, expectedVersion);
       for (const s of res.snapshots)
         this.repo.insertSnapshot({ id: s.id, opportunityId: opp.id, kind: s.kind, hash: s.hash, data: s.data, createdAt: ctx.now, createdBy: user.id, isDemo: opp.isDemo });

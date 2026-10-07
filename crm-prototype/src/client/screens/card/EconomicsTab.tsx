@@ -6,7 +6,7 @@ import { COST_LINE_LABELS } from '../../../domain/types';
 import { isFull } from '../../types';
 import type { EstimateResult } from '../../../domain/economics';
 import type { TabProps } from '../OpportunityCard';
-import { Badge, Check, Empty, ErrorBox, Field, Select, useAction, useApp } from '../../ui';
+import { Badge, Check, Confirm, Empty, ErrorBox, Field, Select, useAction, useApp } from '../../ui';
 
 const rubStr = (k: number | null) => (k === null ? '' : String(k / 100));
 const parse = (s: string) => (s.trim() === '' ? null : parseRubInput(s));
@@ -49,6 +49,7 @@ function WorkItems({ v, run }: Pick<TabProps, 'v' | 'run'>) {
   const [f, setF] = useState(empty);
   const a = useAction();
   const del = useAction();
+  const [toDelete, setToDelete] = useState<WorkItem | null>(null);
   return (
     <section className="card">
       <h2>Работы</h2>
@@ -68,7 +69,7 @@ function WorkItems({ v, run }: Pick<TabProps, 'v' | 'run'>) {
                     <td data-label="Объём">{w.quantity ?? '—'} {w.unit ?? ''}</td>
                     <td data-label="Результат" className="small">{w.expectedResult ?? '—'}<br /><em>Приёмка:</em> {w.acceptanceCriterion ?? '—'}</td>
                     <td data-label="Проверка">{issues.length ? <ul className="small">{issues.map((i) => <li key={i}>{i}</li>)}</ul> : <Badge kind="ok">Готово к КП</Badge>}</td>
-                    <td><button className="btn small danger" disabled={del.busy} onClick={() => { if (window.confirm(`Удалить работу «${w.title}»?`)) void del.run(() => run({ type: 'removeWorkItem', payload: { id: w.id } })); }}>Удалить</button></td>
+                    <td><button className="btn small danger" disabled={del.busy} onClick={() => setToDelete(w)}>Удалить</button></td>
                   </tr>
                 );
               })}
@@ -77,6 +78,10 @@ function WorkItems({ v, run }: Pick<TabProps, 'v' | 'run'>) {
         </div>
       )}
       <ErrorBox error={del.error} />
+      <Confirm open={!!toDelete} title="Удалить работу" confirmLabel="Удалить" disabled={del.busy} onCancel={() => setToDelete(null)}
+        onConfirm={() => void del.run(async () => { if (toDelete) await run({ type: 'removeWorkItem', payload: { id: toDelete.id } }); setToDelete(null); })}>
+        <p>Удалить работу «{toDelete?.title}» из черновика? В отправленных версиях КП она останется.</p>
+      </Confirm>
       <details className="disclosure" style={{ marginTop: 10 }}>
         <summary>Добавить работу</summary>
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void a.run(async () => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
+import { isWebDemo } from './mode';
 import { AppCtx, ErrorBox, Field, useAction, type Session, type TeamMember } from './ui';
 import type { Role } from '../domain/types';
 import { Dashboard } from './screens/Dashboard';
@@ -21,6 +22,19 @@ function useHash() {
 }
 
 export function SimulationBanner() {
+  if (isWebDemo())
+    return (
+      <div className="sim-banner" role="note" aria-label="Ограничения прототипа">
+        <span className="long">
+          <strong>Веб-демо прототипа на синтетических данных.</strong> Всё работает в вашем браузере: данные видите только вы и они могут
+          пропасть при очистке браузера. Вход без пароля, роли и журнал не защищены. AI, почта, Drive, подписание и платежи не подключены:
+          «отправка» и «оплата» — ручные отметки. Файлы Word/PDF здесь не скачиваются.
+        </span>
+        <span className="short">
+          <strong>Веб-демо, синтетические данные.</strong> Данные только в этом браузере; роли не защищены; интеграции не подключены.
+        </span>
+      </div>
+    );
   return (
     <div className="sim-banner" role="note" aria-label="Ограничения прототипа">
       <span className="long">
@@ -35,7 +49,43 @@ export function SimulationBanner() {
   );
 }
 
+const DEMO_LOGINS: [string, string][] = [
+  ['owner', 'Владелец (+ проджект пресейла)'],
+  ['pm', 'Проджект пресейла'],
+  ['pm2', 'Проджект пресейла 2'],
+  ['lead', 'Стратег / ведущий специалист'],
+  ['spec', 'Специалист'],
+  ['rpm', 'Принимающий проджект'],
+];
+
+function DemoLogin({ onDone }: { onDone: () => void }) {
+  const a = useAction();
+  return (
+    <main>
+      <div className="card" style={{ maxWidth: 520, margin: '32px auto' }}>
+        <h1>ON AIR CRM</h1>
+        <p>Выберите синтетическую роль. В веб-демо вход без пароля: это показ процесса, а не защищённая система.</p>
+        <div className="stack">
+          {DEMO_LOGINS.map(([login, label]) => (
+            <button key={login} className="btn" style={{ width: '100%', textAlign: 'left' }} disabled={a.busy}
+              onClick={() => void a.run(async () => { await api.post('/api/login', { login }); onDone(); })}>
+              Войти: {label} <span className="muted small">({login})</span>
+            </button>
+          ))}
+        </div>
+        <ErrorBox error={a.error} />
+        <p className="muted small" style={{ marginTop: 10 }}>Начать удобнее с роли «Владелец» и кейса «Контур Образец». Текстовый заголовок — не логотип.</p>
+      </div>
+    </main>
+  );
+}
+
 function Login({ onDone }: { onDone: () => void }) {
+  if (isWebDemo()) return <DemoLogin onDone={onDone} />;
+  return <PasswordLogin onDone={onDone} />;
+}
+
+function PasswordLogin({ onDone }: { onDone: () => void }) {
   const [login, setLogin] = useState('owner');
   const [password, setPassword] = useState('');
   const a = useAction();

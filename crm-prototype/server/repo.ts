@@ -1,44 +1,23 @@
-import { randomUUID } from 'node:crypto';
 import type { EventDraft } from '../src/domain/commands';
 import type { Backup } from '../src/domain/backup';
 import { BACKUP_WARNING, SCHEMA_VERSION } from '../src/domain/backup';
 import type { ChangeEvent, Company, Contact, Opportunity, Role, Settings, Snapshot, User } from '../src/domain/types';
 import { tx, type DB } from './db';
 
-export class ConflictError extends Error {
-  constructor(public currentVersion: number) {
-    super('version_conflict');
-  }
-}
+import { ConflictError, newId } from '../src/domain/ids';
+import type { RepoLike } from './repoTypes';
 
-export const newId = (prefix: string) => `${prefix}_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
+export { ConflictError, newId };
 
-const SECRET_KEYS = /^(password|password_hash|passwordHash|token|token_hash|secret|apiKey|api_key)$/i;
+export { sanitizeForJournal, DEFAULT_SETTINGS } from './storeShared';
+import { sanitizeForJournal, DEFAULT_SETTINGS } from './storeShared';
 
-/** Журнал никогда не хранит секреты: ключи-секреты вырезаются на любой глубине. */
-export function sanitizeForJournal(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(sanitizeForJournal);
-  if (v && typeof v === 'object') {
-    const o: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v)) o[k] = SECRET_KEYS.test(k) ? '[удалено]' : sanitizeForJournal(val);
-    return o;
-  }
-  return v;
-}
-
-export const DEFAULT_SETTINGS: Settings = {
-  defaultTargetMarginBp: 3000,
-  targetMarginApproved: false,
-  presaleLimitHoursDefault: null,
-  presaleLimitApproved: false,
-  rateCard: [
-    { role: 'Специалист (демо)', rateKop: 250000, approved: false },
-    { role: 'Проджект (демо)', rateKop: 200000, approved: false },
-  ],
-};
-
-export class Repo {
+export class Repo implements RepoLike {
   constructor(public db: DB) {}
+
+  transaction<T>(fn: () => T): T {
+    return tx(this.db, fn);
+  }
 
   /* --- users --- */
   userByLogin(login: string): (User & { passwordHash: string | null }) | null {

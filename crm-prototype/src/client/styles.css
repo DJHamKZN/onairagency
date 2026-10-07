@@ -27,7 +27,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--dark); outline-offset: 2px; border-radius: 2px; }
 
 .sim-banner {
-  position: sticky; top: 0; z-index: 30; background: var(--dark); color: #fff; padding: 6px 16px; font-size: 13px;
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; background: var(--dark); color: #fff; padding: 6px 16px; font-size: 13px;
 }
 .sim-banner strong { color: #fff; }
 .sim-banner .short { display: none; }
@@ -68,15 +68,15 @@ input[type='text'], input[type='number'], input[type='date'], input[type='passwo
 textarea { min-height: 72px; resize: vertical; }
 input[aria-invalid='true'], select[aria-invalid='true'], textarea[aria-invalid='true'] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
 .field-error { color: var(--dark); font-size: 13px; margin-top: 3px; }
-.field-error::before { content: '⚠ '; color: var(--accent); }
+.field-error::before { content: '\26A0\00A0'; color: var(--accent); }
 .check { display: flex; gap: 8px; align-items: flex-start; }
 .check input { margin-top: 3px; width: 18px; height: 18px; }
 
 .badge { display: inline-block; border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; font-size: 12px; background: var(--white); color: var(--text); white-space: nowrap; }
 .badge.dark { background: var(--dark); color: #fff; border-color: var(--dark); }
 .badge.warn { border-color: var(--accent); color: var(--dark); }
-.badge.warn::before { content: '● '; color: var(--accent); }
-.badge.ok::before { content: '✓ '; }
+.badge.warn::before { content: '\25CF\00A0'; color: var(--accent); }
+.badge.ok::before { content: '\2713\00A0'; }
 .badge.draft { border-style: dashed; }
 
 .notice { border: 1px solid var(--border); border-left: 4px solid var(--dark); background: var(--white); padding: 10px 12px; border-radius: var(--radius); margin-bottom: 10px; }

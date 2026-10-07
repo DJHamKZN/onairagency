@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { download } from '../../api';
+import { isWebDemo } from '../../mode';
 import { ROUTE_LABELS } from '../../../domain/stages';
 import type { AuditFinding, AuditModule, ClaimType, LeadPathLevel, LeadPathStatus, ModuleKey, ModuleStatus, RouteType } from '../../../domain/types';
 import { CLAIM_TYPE_LABELS, LEAD_PATH_LABELS, LEAD_PATH_LEVELS, MODULE_LABELS, MODULE_STATUS_LABELS, VERIFICATION_LABELS } from '../../../domain/types';
@@ -293,11 +294,12 @@ function Deliverables({ v }: { v: TabProps['v'] }) {
       <h2>Три результата полного аудита</h2>
       <p className="small">Все три строятся из общей базы находок. Клиентские версии включают только находки с проверенным доказательством (или явно помеченные гипотезы) и перечисляют невыполненные направления как пробелы. Внутренний документ в клиентский экспорт не входит.</p>
       <Demo>Файлы формируются локально в браузер. Клиенту ничего не отправляется; это черновики.</Demo>
-      <div className="row">
+      {isWebDemo() && <p className="small"><strong>В веб-демо файлы не скачиваются.</strong> Какие находки попадут в клиентские версии, видно в «Реестре находок» (столбец «Экспорт клиенту»). Сами файлы формирует локальная версия.</p>}
+      {!isWebDemo() && <div className="row">
         <button className="btn" disabled={a.busy} onClick={() => void a.run(() => download(`${base}/client_brief_pdf`))}>1. Краткий клиентский PDF</button>
         <button className="btn" disabled={a.busy} onClick={() => void a.run(() => download(`${base}/client_detailed_docx`))}>2. Подробный клиентский Word</button>
         <button className="btn" disabled={a.busy} onClick={() => void a.run(() => download(`${base}/internal_docx`))}>3. Внутренний Word команды</button>
-      </div>
+      </div>}
       <ErrorBox error={a.error} />
     </section>
   );
