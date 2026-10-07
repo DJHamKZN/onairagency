@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { FACT_KEY_LABELS, SINGLE_KEYS, formatFactValue } from '../../../domain/labels';
+import { missingInfo } from '../../../domain/commands';
 import { formatKop, parseRubInput } from '../../../domain/money';
 import type { BudgetStatus, Fact, FactStatus, ImpactArea, SingleFactKey } from '../../../domain/types';
 import { FACT_STATUS_LABELS } from '../../../domain/types';
 import type { TabProps } from '../OpportunityCard';
+import { isWebDemo } from '../../mode';
 import { Badge, Check, Empty, ErrorBox, Field, fmtDate, fmtDateTime, Select, useAction, useApp } from '../../ui';
 
 function FactRow({ f, v, run }: { f: Fact } & Pick<TabProps, 'v' | 'run'>) {
@@ -47,6 +49,7 @@ export function IntakeTab({ v, run }: TabProps) {
   return (
     <div className="stack">
       <ContinuationBlock v={v} run={run} />
+      <MissingBlock v={v} run={run} />
       <section className="card">
         <h2>Сведения о задаче</h2>
         <p className="small muted">Поля заполняются постепенно из источников. Неизвестное остаётся неизвестным, а не нулём и не пустой строкой. Исходный запрос при создании: «{v.originalRequest}»</p>
@@ -86,6 +89,23 @@ export function IntakeTab({ v, run }: TabProps) {
   );
 }
 
+function MissingBlock({ v, run }: Pick<TabProps, 'v' | 'run'>) {
+  const missing = missingInfo(v);
+  const a = useAction();
+  const toCreate = missing.filter((m) => !m.hasOpenQuestion).length;
+  return (
+    <section className="card">
+      <h2>Чего не хватает для конкретного предложения</h2>
+      <p className="small muted">Короткий список значимых сведений, а не полный бриф. Если всё нужное уже есть в письме — зафиксируйте решение «Данных достаточно» и идите дальше без созвона.</p>
+      {missing.length === 0 ? <Empty>Значимые сведения заполнены</Empty> : (
+        <ul>{missing.map((m) => <li key={m.key}>{m.label} {m.hasOpenQuestion ? <Badge>вопрос задан</Badge> : <Badge kind="warn">нет вопроса</Badge>}</li>)}</ul>
+      )}
+      {toCreate > 0 && <button className="btn" disabled={a.busy} onClick={() => void a.run(() => run({ type: 'createMissingQuestions', payload: {} }))}>Создать вопросы ({toCreate})</button>}
+      <ErrorBox error={a.error} />
+    </section>
+  );
+}
+
 function ContinuationBlock({ v, run }: Pick<TabProps, 'v' | 'run'>) {
   const [method, setMethod] = useState(v.continuation?.method ?? '');
   const [decision, setDecision] = useState<'enough_for_proposal' | 'offer_paid_diagnostic'>(v.readiness?.decision ?? 'enough_for_proposal');
@@ -103,7 +123,7 @@ function ContinuationBlock({ v, run }: Pick<TabProps, 'v' | 'run'>) {
         </form>
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void b.run(() => run({ type: 'setReadiness', payload: { decision, justification: just } })); }}>
           <Select label="Решение по уточнению" value={decision} onChange={setDecision} options={[['enough_for_proposal', 'Данных достаточно для конкретного предложения'], ['offer_paid_diagnostic', 'Предлагаем платную диагностику']]} />
-          <Field label="Обоснование" value={just} onChange={setJust} required />
+          <Field label="Обоснование" value={just} onChange={setJust} hint="Например: «Письма достаточно: результат, срок и материалы понятны»" required />
           <button className="btn" disabled={b.busy}>Зафиксировать решение</button>
           <ErrorBox error={b.error} />
         </form>
@@ -307,7 +327,7 @@ function PmVisibility({ v, run }: Pick<TabProps, 'v' | 'run'>) {
   return (
     <div className="notice" style={{ marginTop: 10 }}>
       <strong>Видимость внутренних затрат для PM:</strong> {v.pmCostVisibility ? 'разрешена владельцем' : 'скрыта (по умолчанию)'}.
-      <p className="small">Это решение владельца, а не доступ всей команды по умолчанию. Сервер скрывает ставки, себестоимость, маржу и комиссию для PM без разрешения.</p>
+      <p className="small">Это решение владельца, а не доступ всей команды по умолчанию. {isWebDemo() ? 'В веб-демо данные для PM урезает код в браузере — это показ правила, а не защита.' : 'Локальный сервер удаляет ставки, себестоимость, маржу и комиссию из ответов для PM без разрешения.'}</p>
       <div className="row">
         <input type="text" aria-label="Комментарий к решению о видимости" placeholder="Комментарий к решению" value={comment} onChange={(e) => setComment(e.target.value)} style={{ maxWidth: 320 }} />
         <button className="btn small" disabled={a.busy} onClick={() => void a.run(() => run({ type: 'setPmCostVisibility', payload: { visible: !v.pmCostVisibility, comment } }))}>

@@ -5,7 +5,7 @@
  * данные хранятся только в этом браузере. Файлы (Word/PDF) не скачиваются — так устроена страница claude.ai.
  */
 import { validateBackupText, type Backup } from '../domain/backup';
-import { exportClientAudit, exportClientProposal } from '../domain/clientExport';
+import { exportClientAudit, exportClientProposal, exportHandoff } from '../domain/clientExport';
 import { DomainError } from '../domain/errors';
 import { ConflictError } from '../domain/ids';
 import type { Role, User } from '../domain/types';
@@ -126,28 +126,42 @@ async function route(method: string, path: string, query: URLSearchParams, bodyT
       ownerDecisions: role === 'owner' ? svc.ownerDecisionsFor(repo.opportunity(id)!) : [],
     });
     if (method === 'GET' && seg.length === 3) return json(200, withExtras(svc.view(user, role, id)));
-    if (method === 'GET' && seg[3] === 'history') return json(200, svc.history(user, role, id));
+    if (method === 'GET' && seg[3] === 'history') {
+      const since = query.get('since');
+      const all = svc.history(user, role, id);
+      return json(200, since ? all.filter((e) => e.at > since) : all);
+    }
     if (method === 'POST' && seg[3] === 'commands') {
       const b = body();
       const r = svc.run(user, role, id, b.command, Number(b.expectedVersion));
       return json(200, withExtras(r.view, r.createdId));
     }
     if (method === 'GET' && seg[3] === 'export') {
-      if (role !== 'owner' && role !== 'presale_pm' && role !== 'lead_specialist') throw new AccessError(403, 'Экспорт недоступен для этой роли');
       svc.view(user, role, id);
       const opp = repo.opportunity(id)!;
       const company = repo.company(opp.companyId)!;
       const log = (action: string, after: unknown) =>
         repo.appendEvents(id, [{ entityType: 'Export', entityId: id, action, before: null, after, reason: 'Предпросмотр в веб-демо. Клиенту не отправлялось' }], user.id, role, new Date().toISOString(), opp.isDemo);
+      const format = query.get('format') ?? 'json';
       if (seg[4] === 'proposal') {
-        if (role === 'lead_specialist') throw new AccessError(403, 'Экспорт КП доступен владельцу и проджекту');
+        if (role !== 'owner' && role !== 'presale_pm') throw new AccessError(403, 'Экспорт КП доступен владельцу и проджекту');
         const p = opp.proposals.find((x) => x.id === seg[5]);
         if (!p) throw new AccessError(404, 'Версия КП не найдена');
-        if ((query.get('format') ?? 'json') !== 'json') throw new HttpErr(501, NO_FILES);
+        if (format !== 'json') throw new HttpErr(501, NO_FILES);
         log('client_proposal_previewed', { version: p.number, status: p.status });
         return json(200, exportClientProposal(opp, company, p));
       }
-      if (seg[4] === 'audit' && seg[5] === 'client_json') return json(200, exportClientAudit(opp, company, 'detailed'));
+      if (seg[4] === 'handoff') {
+        if (role !== 'owner' && role !== 'presale_pm' && role !== 'receiving_pm') throw new AccessError(403, 'Пакет передачи недоступен для этой роли');
+        const data = exportHandoff(opp, company);
+        if (!data) throw new HttpErr(422, 'Нет принятой клиентом версии КП — пакет передачи строится только из неё');
+        if (format !== 'json') throw new HttpErr(501, NO_FILES);
+        return json(200, data);
+      }
+      if (seg[4] === 'audit') {
+        if (role !== 'owner' && role !== 'presale_pm' && role !== 'lead_specialist') throw new AccessError(403, 'Экспорт аудита недоступен для этой роли');
+        if (seg[5] === 'client_json') return json(200, exportClientAudit(opp, company, 'detailed'));
+      }
       throw new HttpErr(501, NO_FILES);
     }
   }

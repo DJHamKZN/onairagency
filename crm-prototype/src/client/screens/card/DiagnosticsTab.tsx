@@ -24,7 +24,7 @@ export function DiagnosticsTab({ v, run }: TabProps) {
       <ModulesBlock v={v} run={run} />
       <LeadPathBlock v={v} run={run} />
       <FindingsBlock v={v} run={run} />
-      {v.audit.fullMarketingAudit && <Deliverables v={v} />}
+      {v.audit.fullMarketingAudit && <Deliverables v={v} run={run} />}
     </div>
   );
 }
@@ -286,21 +286,34 @@ function AddFinding({ v, run }: Pick<TabProps, 'v' | 'run'>) {
   );
 }
 
-function Deliverables({ v }: { v: TabProps['v'] }) {
+const DELIV_LABELS = { client_brief_pdf: '1. Выжимка для клиента (PDF)', client_detailed_docx: '2. Клиентский аудит (Word)', internal_docx: '3. Внутренний аудит команды (Word)' } as const;
+
+function Deliverables({ v, run }: { v: TabProps['v']; run: TabProps['run'] }) {
   const a = useAction();
+  const [note, setNote] = useState('');
   const base = `/api/opportunities/${v.id}/export/audit`;
+  const saved = v.audit.deliverables.some((d) => d.snapshotId);
+  const setNumber = Math.max(0, ...v.audit.deliverables.map((d) => d.setNumber ?? 0));
   return (
     <section className="card">
       <h2>Три результата полного аудита</h2>
-      <p className="small">Все три строятся из общей базы находок. Клиентские версии включают только находки с проверенным доказательством (или явно помеченные гипотезы) и перечисляют невыполненные направления как пробелы. Внутренний документ в клиентский экспорт не входит.</p>
-      <Demo>Файлы формируются локально в браузер. Клиенту ничего не отправляется; это черновики.</Demo>
-      {isWebDemo() && <p className="small"><strong>В веб-демо файлы не скачиваются.</strong> Какие находки попадут в клиентские версии, видно в «Реестре находок» (столбец «Экспорт клиенту»). Сами файлы формирует локальная версия.</p>}
-      {!isWebDemo() && <div className="row">
-        <button className="btn" disabled={a.busy} onClick={() => void a.run(() => download(`${base}/client_brief_pdf`))}>1. Краткий клиентский PDF</button>
-        <button className="btn" disabled={a.busy} onClick={() => void a.run(() => download(`${base}/client_detailed_docx`))}>2. Подробный клиентский Word</button>
-        <button className="btn" disabled={a.busy} onClick={() => void a.run(() => download(`${base}/internal_docx`))}>3. Внутренний Word команды</button>
-      </div>}
+      <p className="small">Выжимка, клиентский аудит и внутренний аудит команды сохраняются одним комплектом из одной версии находок. Клиентские документы включают только находки с проверенным доказательством (или явно помеченные гипотезы) и показывают невыполненные направления как пробелы. Внутренний документ в клиентский экспорт не входит.</p>
+      <p>{saved ? <>Сохранён комплект №{setNumber} · {fmtDateTimeShort(v.audit.deliverables[0]?.lastGeneratedAt)}</> : 'Комплект ещё не сохранён.'}</p>
+      <form className="row" onSubmit={(e) => { e.preventDefault(); void a.run(() => run({ type: 'saveAuditDeliverables', payload: { limitationsNote: note || null } })); }}>
+        <input type="text" aria-label="Примечание об ограничениях комплекта" placeholder="Примечание об ограничениях (необязательно)" value={note} onChange={(e) => setNote(e.target.value)} style={{ maxWidth: 360 }} />
+        <button className="btn primary" disabled={a.busy}>{saved ? 'Сохранить новый комплект' : 'Сохранить комплект документов'}</button>
+      </form>
+      {saved && (isWebDemo()
+        ? <p className="small"><strong>В веб-демо файлы не скачиваются.</strong> Комплект сохранён в данных браузера; файлы формирует локальная версия.</p>
+        : <div className="row" style={{ marginTop: 8 }}>
+            {(['client_brief_pdf', 'client_detailed_docx', 'internal_docx'] as const).map((k) => (
+              <button key={k} className="btn" disabled={a.busy} onClick={() => void a.run(() => download(`${base}/${k}`))}>{DELIV_LABELS[k]}</button>
+            ))}
+          </div>)}
+      <Demo>Файлы формируются локально из сохранённой версии. Клиенту ничего не отправляется.</Demo>
       <ErrorBox error={a.error} />
     </section>
   );
 }
+
+const fmtDateTimeShort = (s: string | null | undefined) => (s ? new Date(s).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' }) : '—');

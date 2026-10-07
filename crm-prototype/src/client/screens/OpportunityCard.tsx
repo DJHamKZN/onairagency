@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from '../api';
 import type { Command } from '../../domain/commands';
 import { ROUTE_LABELS, STAGE_LABELS, WORK_STAGES } from '../../domain/stages';
-import type { WorkStage } from '../../domain/types';
+import type { ChangeEvent, WorkStage } from '../../domain/types';
 import { PROPOSAL_STATUS_LABELS } from '../../domain/types';
 import type { View } from '../types';
+import { isWebDemo } from '../mode';
+import { commandLabel, eventLabel } from '../eventLabels';
 import { Badge, Confirm, ErrorBox, Field, fmtDate, Select, useAction, useApp } from '../ui';
 import { IntakeTab } from './card/IntakeTab';
 import { SourcesTab } from './card/SourcesTab';
@@ -31,7 +33,8 @@ const TABS: [string, string][] = [
 export function OpportunityCard({ id, tab }: { id: string; tab: string }) {
   const [v, setV] = useState<View | null>(null);
   const [loadErr, setLoadErr] = useState<unknown>(null);
-  const [conflict, setConflict] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<{ message: string; cmd: Command; since: string; changes: ChangeEvent[] } | null>(null);
+  const { teamName } = useApp();
 
   const reload = useCallback(async () => {
     try {
@@ -48,7 +51,11 @@ export function OpportunityCard({ id, tab }: { id: string; tab: string }) {
       setV(next);
       return next;
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) setConflict(e.message);
+      if (e instanceof ApiError && e.status === 409) {
+        let changes: ChangeEvent[] = [];
+        try { changes = await api.get<ChangeEvent[]>(`/api/opportunities/${id}/history?since=${encodeURIComponent(v.updatedAt)}`); } catch { /* список изменений недоступен */ }
+        setConflict({ message: e.message, cmd, since: v.updatedAt, changes });
+      }
       throw e;
     }
   }, [id, v]);
@@ -63,8 +70,25 @@ export function OpportunityCard({ id, tab }: { id: string; tab: string }) {
       <TopBlock v={v} run={run} />
       {conflict && (
         <div className="notice error" role="alert">
-          <strong>Конфликт версии.</strong> {conflict}
-          <div className="row" style={{ marginTop: 6 }}><button className="btn small" onClick={() => void reload()}>Обновить карточку (введённые в формы данные останутся)</button></div>
+          <strong>Карточку уже изменил другой участник — ваше действие не применено и ничего не перезаписано.</strong>
+          {conflict.changes.length > 0 && (
+            <ul className="small">{conflict.changes.slice(-8).map((c) => <li key={c.id}>{teamName(c.userId)} {eventLabel(c.action)}{c.reason ? ` — ${c.reason}` : ''}</li>)}</ul>
+          )}
+          <p className="small">Ваше действие сохранено: {commandLabel(conflict.cmd.type)}. Его можно повторить на свежей версии — правила проверятся заново.</p>
+          <div className="row" style={{ marginTop: 6 }}>
+            <button className="btn small primary" onClick={() => void (async () => {
+              const fresh = await api.get<View>(`/api/opportunities/${id}`);
+              try {
+                const next = await api.post<View>(`/api/opportunities/${id}/commands`, { command: conflict.cmd, expectedVersion: fresh.rev });
+                setV(next);
+                setConflict(null);
+              } catch (err) {
+                setV(fresh);
+                setConflict({ ...conflict, message: (err as Error).message });
+              }
+            })()}>Обновить и повторить моё действие</button>
+            <button className="btn small" onClick={() => void reload()}>Только обновить карточку</button>
+          </div>
         </div>
       )}
       <div className="tabs" role="tablist" aria-label="Разделы карточки">
@@ -131,7 +155,7 @@ function TopBlock({ v, run }: { v: View; run: Run }) {
           ))}
         </p>
       )}
-      {v.restricted.map((r) => <p key={r} className="small muted">🔒 {r}</p>)}
+      {v.restricted.map((r) => <p key={r} className="small muted">🔒 {r}{isWebDemo() ? ' — в веб-демо это делает код в браузере, а не защищённый сервер' : ' — на локальном сервере'}</p>)}
       <div className="row" style={{ marginTop: 8 }}>
         <button className="btn small" onClick={() => { setStep(v.nextStep); setEditStep(!editStep); }} aria-expanded={editStep}>Изменить следующий шаг</button>
       </div>

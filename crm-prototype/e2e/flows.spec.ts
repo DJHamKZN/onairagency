@@ -45,7 +45,7 @@ test('21: предупреждение о симуляции видно пост
   await openOpp(page, /Линия Плюс/);
   await page.getByRole('tab', { name: 'Источники' }).click();
   await expect(page.getByText('Сохранён только текст').first()).toBeVisible();
-  await expect(page.getByText(/детерминированные правила по ключевым словам, а не AI/)).toBeVisible();
+  await expect(page.getByText(/ИИ не подключён/)).toBeVisible();
   await page.mouse.wheel(0, 3000);
   await expect(page.getByRole('note', { name: 'Ограничения прототипа' })).toBeInViewport();
 });
@@ -96,7 +96,7 @@ test('5: кейс A — разбор очереди и переход к пре�
   await expect(page.getByText('Три результата полного аудита')).toHaveCount(0);
 });
 
-test('3, 12: кейс C — противоречие дат с двумя источниками, утверждение и снятие после скидки', async ({ page }) => {
+test('1, 3, 12: кейс C — противоречие дат, проверка оценок, утверждение, изменение только новой версией', async ({ page }) => {
   await login(page);
   await openOpp(page, /Контур Образец/);
   await page.getByRole('tab', { name: 'Источники' }).click();
@@ -111,17 +111,46 @@ test('3, 12: кейс C — противоречие дат с двумя ист
   await page.getByRole('button', { name: 'Зафиксировать решение' }).click();
   await expect(page.getByText('Открытых противоречий нет')).toBeVisible();
 
+  // 1: предварительные оценки видны явно; утвердить нельзя, пока оценки не проверены
+  await page.getByRole('tab', { name: 'Работы и экономика' }).click();
+  await expect(page.getByText('1. Данные заполнены')).toBeVisible();
+  await expect(page.getByText(/2\. Оценки не проверены \(4\)/)).toBeVisible();
+  await expect(page.getByText('3. Экономика не утверждена владельцем')).toBeVisible();
+  await expect(page.getByText('Непроверенные оценки').first()).toBeVisible();
+  await expect(page.getByText(/выплата из выручки агентства/).first()).toBeVisible();
+  await expect(page.getByText(/Ежемесячные работы \(в месяц\): как получена цена услуг/)).toBeVisible();
+  await page.getByText('1. Данные заполнены').scrollIntoViewIfNeeded();
+  await shot(page, 'economics-unverified');
+  await page.getByRole('tab', { name: 'КП и версии' }).click();
+  await expect(page.getByText(/Оценки не проверены \(4\)/)).toBeVisible();
+  await page.getByRole('tab', { name: 'Работы и экономика' }).click();
+  for (let i = 0; i < 4; i++) {
+    await page.getByPlaceholder('чем проверено').first().fill('Сверено с объёмом (демо)');
+    await page.getByRole('button', { name: 'Проверить оценку' }).first().click();
+    await expect(page.getByRole('button', { name: 'Проверить оценку' })).toHaveCount(3 - i);
+  }
+  await expect(page.getByText('2. Оценки проверены')).toBeVisible();
+
   await page.getByRole('tab', { name: 'КП и версии' }).click();
   await page.getByRole('button', { name: 'Утвердить версию и расчёт…' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Утвердить' }).click();
   await expect(page.getByText(/Утверждено владельцем/)).toBeVisible();
   await expect(page.getByText('150 000 усл. ₽').first()).toBeVisible();
 
-  // 13: генерация (предпросмотр) не меняет статус
+  // 13: предпросмотр не меняет статус и не содержит ставок
   await page.getByRole('button', { name: 'Предпросмотр клиентского документа' }).click();
   await expect(page.getByLabel('Предпросмотр клиентского документа')).toContainText('Утверждён для отправки — отправка не зафиксирована');
+  await expect(page.getByLabel('Предпросмотр клиентского документа')).toContainText('в месяц');
   await expect(page.getByLabel('Предпросмотр клиентского документа')).not.toContainText('2 500');
 
+  // утверждённая версия не редактируется; скидка — только в новой версии
+  await page.getByRole('tab', { name: 'Работы и экономика' }).click();
+  await expect(page.getByText(/утверждён и зафиксирован/)).toBeVisible();
+  await expect(page.getByText('3. Экономика утверждена владельцем (КП v1)')).toBeVisible();
+  await page.getByRole('tab', { name: 'КП и версии' }).click();
+  await page.getByRole('button', { name: 'Создать новую версию для изменений…' }).click();
+  await page.getByRole('dialog').getByLabel('Причина').fill('Клиент просит скидку');
+  await page.getByRole('dialog').getByRole('button', { name: 'Создать версию' }).click();
   await page.getByRole('tab', { name: 'Работы и экономика' }).click();
   await page.getByText(/Параметры цены, скидка/).click();
   await page.getByLabel('Скидка, усл. ₽').fill('10000');
@@ -130,13 +159,75 @@ test('3, 12: кейс C — противоречие дат с двумя ист
   await expect(page.getByText(/36\s000/).first()).toBeVisible();
   await expect(page.getByText(/25,714/)).toBeVisible();
   await page.getByRole('tab', { name: 'КП и версии' }).click();
-  await expect(page.getByText(/Утверждение владельца снято/)).toBeVisible();
+  await expect(page.getByText('Требует повторного согласования.')).toBeVisible();
   await expect(page.locator('.notice.error').filter({ hasText: /150\s000 усл\. ₽ → 140\s000 усл\. ₽/ })).toBeVisible();
-  await shot(page, 'approval-revoked');
-  // 18: после обновления страницы состояние сохранено (данные на сервере, не в браузере)
+  await expect(page.getByText(/версия заменена, решение сохранено/)).toBeVisible();
+  await page.getByText('Требует повторного согласования.').scrollIntoViewIfNeeded();
+  await shot(page, 'new-version-needs-approval');
+  // 18: после обновления страницы состояние сохранено (данные на сервере)
   await page.reload();
-  await expect(page.getByText(/Утверждение владельца снято/)).toBeVisible();
-  await expect(page.getByText('Открытых противоречий нет')).toHaveCount(0); // вкладка КП, а не источники
+  await expect(page.getByText('Требует повторного согласования.')).toBeVisible();
+});
+
+test('Конфликт двух пользователей: чужие изменения видны, своё действие повторяется без потери', async ({ page, browser }) => {
+  await login(page);
+  await openOpp(page, /Линия Плюс/);
+  const other = await browser.newContext({ viewport: page.viewportSize() ?? undefined });
+  const p2 = await other.newPage();
+  await login(p2, 'pm');
+  await openOpp(p2, /Линия Плюс/);
+  // владелец меняет следующий шаг; PM с устаревшей карточкой пытается сохранить своё
+  await page.getByRole('button', { name: 'Изменить следующий шаг' }).click();
+  await page.getByLabel('Что сделать').first().fill('Шаг владельца');
+  await page.getByRole('button', { name: 'Сохранить шаг' }).click();
+  await expect(page.getByText('Шаг владельца').first()).toBeVisible();
+  await p2.getByRole('tab', { name: 'Вводные' }).click();
+  await p2.getByLabel('Способ продолжить').fill('Способ от PM');
+  await p2.getByRole('button', { name: 'Сохранить способ' }).click();
+  await expect(p2.getByText(/Карточку уже изменил другой участник/)).toBeVisible();
+  await expect(p2.getByText(/изменил основные данные/)).toBeVisible();
+  await expect(p2.getByLabel('Способ продолжить')).toHaveValue('Способ от PM');
+  await shot(p2, 'conflict-two-users');
+  await p2.getByRole('button', { name: 'Обновить и повторить моё действие' }).click();
+  await expect(p2.getByText(/Карточку уже изменил другой участник/)).toHaveCount(0);
+  await p2.reload();
+  await expect(p2.getByText('Шаг владельца').first()).toBeVisible();
+  await expect(p2.getByLabel('Способ продолжить')).toHaveValue('Способ от PM');
+  await other.close();
+});
+
+test('Основной сценарий: письмо → предложения с цитатами → вопросы → без созвона дальше', async ({ page }) => {
+  await login(page);
+  await openOpp(page, /Площадка Пример/);
+  await page.getByRole('tab', { name: 'Источники' }).click();
+  await expect(page.getByText(/ИИ не подключён/)).toBeVisible();
+  await page.getByText('Добавить источник: вставить заметку или текст расшифровки').click();
+  const form = page.locator('details').filter({ hasText: 'Добавить источник: вставить заметку' });
+  await form.getByLabel('Тип').selectOption('email');
+  await form.getByLabel('Название').fill('Демо-письмо 5');
+  await form.getByRole('textbox', { name: /^Текст Таймкоды/ }).fill('Цель бизнеса: Получить 15 оплаченных подписок.\nМы подготовим посадочную страницу за неделю.\nХотели бы скидку для первого месяца.');
+  await page.getByRole('button', { name: 'Добавить источник' }).click();
+  await page.getByRole('button', { name: 'Разбор по ключевым словам (не ИИ)' }).click();
+  await expect(page.getByText('Кандидат в обещания').first()).toBeVisible();
+  await expect(page.getByText('Пожелание клиента').first()).toBeVisible();
+  const before = await page.getByRole('button', { name: 'Принять' }).count();
+  await page.getByRole('button', { name: 'Разобрать ещё раз (без дублей)' }).last().click();
+  await page.waitForTimeout(300);
+  await expect(page.getByRole('button', { name: 'Принять' })).toHaveCount(before);
+  await page.getByRole('tab', { name: 'Вводные' }).click();
+  await expect(page.getByText('Чего не хватает для конкретного предложения')).toBeVisible();
+  await page.getByRole('button', { name: /Создать вопросы/ }).click();
+  await expect(page.getByText(/вопрос задан/).first()).toBeVisible();
+  await shot(page, 'missing-questions');
+});
+
+test('4: страница «Что работает» разделяет артефакт, локальный проект и планы', async ({ page }) => {
+  await login(page);
+  await page.getByRole('link', { name: 'Что работает' }).click();
+  await expect(page.getByRole('heading', { name: 'Опубликованный веб-артефакт (браузер, без сервера)' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Локальный проект/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Пока только запланировано' })).toBeVisible();
+  await expect(page.getByText('локальной версии с сервером')).toBeVisible();
 });
 
 test('22: PM не видит чужие возможности и не получает их по прямому адресу', async ({ page }) => {

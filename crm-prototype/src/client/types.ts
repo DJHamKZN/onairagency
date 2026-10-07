@@ -1,4 +1,4 @@
-import type { NextStep, Opportunity, Role, RouteType, Stage } from '../domain/types';
+import type { NextStep, Opportunity, RouteType, Stage } from '../domain/types';
 import type { EstimateResult } from '../domain/economics';
 
 export interface ListItem {
@@ -21,12 +21,10 @@ export interface ListItem {
   isDemo: boolean;
 }
 
-export type RestrictedEstimate = { restricted: true; priceKop: number | null; complete: boolean; issues: { message: string }[] };
+export type { RestrictedEstimate } from '../domain/permissions';
+import type { OpportunityView, RestrictedEstimate } from '../domain/permissions';
 
-export type View = Opportunity & {
-  computed: { estimates: Record<string, EstimateResult | RestrictedEstimate> };
-  viewRole: Role;
-  restricted: string[];
+export type View = OpportunityView & {
   companyName: string | null;
   ownerDecisions: string[];
   createdId?: string | null;

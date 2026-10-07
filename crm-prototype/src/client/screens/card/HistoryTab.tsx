@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import type { ChangeEvent } from '../../../domain/types';
 import type { TabProps } from '../OpportunityCard';
+import { isWebDemo } from '../../mode';
+import { eventLabel } from '../../eventLabels';
 import { Empty, ErrorBox, fmtDateTime, useApp } from '../../ui';
 
 const short = (x: unknown) => {
@@ -22,7 +24,7 @@ export function HistoryTab({ v }: TabProps) {
   return (
     <section className="card">
       <h2>История изменений</h2>
-      <p className="small muted">Журнал только дополняется (запрет UPDATE/DELETE на уровне БД). Хранит прежнее и новое значение, автора, роль в действии, время и причину. Секреты вырезаются.{session.actingRole !== 'owner' && ' Экономические значения скрыты для вашей роли.'}</p>
+      <p className="small muted">{isWebDemo() ? 'В веб-демо журнал хранится в браузере и не защищён от изменения. ' : 'Журнал только дополняется (запрет UPDATE/DELETE на уровне базы данных сервера). '}Хранит прежнее и новое значение, автора, роль в действии, время и причину. Секреты вырезаются.{session.actingRole !== 'owner' && ' Экономические значения скрыты для вашей роли.'}</p>
       <input type="text" aria-label="Фильтр истории" placeholder="Фильтр: действие, сущность, причина" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 360, marginBottom: 8 }} />
       {list.length === 0 ? <Empty>Нет событий</Empty> : (
         <div className="table-wrap">
@@ -32,7 +34,7 @@ export function HistoryTab({ v }: TabProps) {
               <tr key={e.id}>
                 <td data-label="Когда" className="small">{fmtDateTime(e.at)}</td>
                 <td data-label="Кто" className="small">{teamName(e.userId)}<div className="muted">{e.actingRole}</div></td>
-                <td data-label="Что" className="small">{e.entityType} · {e.action}{e.override && <strong> · ОБХОД ОГРАНИЧЕНИЯ</strong>}</td>
+                <td data-label="Что" className="small">{eventLabel(e.action)} <span className="muted">({e.entityType})</span>{e.override && <strong> · ОБХОД ОГРАНИЧЕНИЯ</strong>}</td>
                 <td data-label="Было → стало" className="small mono">{short(e.before)} → {short(e.after)}</td>
                 <td data-label="Причина" className="small">{e.reason ?? '—'}</td>
               </tr>

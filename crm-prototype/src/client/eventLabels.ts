@@ -1,0 +1,51 @@
+/** Человекочитаемые названия событий журнала и действий (для баннера конфликта и истории). */
+export const EVENT_LABELS: Record<string, string> = {
+  basics_updated: 'изменил основные данные (шаг, назначения, бюджет)',
+  continuation_set: 'изменил способ продолжить',
+  readiness_set: 'зафиксировал решение по уточнению',
+  stage_moved: 'перевёл стадию',
+  stage_returned: 'вернул стадию',
+  added: 'добавил запись',
+  added_from_source: 'принял сведение из источника',
+  keyword_parsed: 'выполнил разбор по ключевым словам',
+  structured_imported: 'импортировал структурированный результат',
+  resolved: 'решил противоречие',
+  opened: 'открыто противоречие',
+  status_changed: 'изменил статус',
+  updated: 'изменил запись',
+  estimate_verified: 'проверил оценку',
+  approved: 'утвердил экономику',
+  kept_for_superseded_version: 'версия заменена, решение сохранено',
+  revision_created: 'создал новую версию КП',
+  content_updated: 'изменил текст КП',
+  sent_recorded: 'зафиксировал отправку КП',
+  acceptance_recorded: 'зафиксировал принятие КП',
+  item_checked: 'отметил проверку готовности',
+  deviation_recorded: 'зафиксировал отклонение',
+  deviation_accepted: 'принял отклонение как риск',
+  package_accepted: 'принял пакет передачи',
+  package_returned: 'вернул пакет на исправление',
+  launch_authorized: 'разрешил запуск',
+  missing_questions_created: 'создал недостающие вопросы',
+  audit_set_saved: 'сохранил комплект документов аудита',
+};
+
+export const COMMAND_LABELS: Record<string, string> = {
+  updateBasics: 'изменение основных данных',
+  setContinuation: 'сохранение способа продолжить',
+  setReadiness: 'решение по уточнению',
+  moveStage: 'перевод стадии',
+  decideProposedChange: 'решение по предложенному изменению',
+  resolveConflict: 'решение противоречия',
+  upsertCostLine: 'изменение строки расчёта',
+  verifyCostLine: 'проверка оценки',
+  updateEstimate: 'изменение параметров цены',
+  updateProposalContent: 'изменение текста КП',
+  approveDeal: 'утверждение экономики',
+  setChecklistItem: 'отметка проверки готовности',
+  addClarification: 'добавление вопроса',
+  addTask: 'добавление задачи',
+};
+
+export const eventLabel = (a: string) => EVENT_LABELS[a] ?? a;
+export const commandLabel = (t: string) => COMMAND_LABELS[t] ?? t;

@@ -4,6 +4,11 @@ import type { ProposedChange, Source, SourceKind } from '../../../domain/types';
 import type { TabProps } from '../OpportunityCard';
 import { Badge, Demo, Empty, ErrorBox, Field, fmtDate, fmtDateTime, Select, useAction } from '../../ui';
 
+const IMPORT_TEMPLATE = JSON.stringify([
+  { kind: 'fact', key: 'business_goal', value: 'Пример: опубликовать страницу с формой', excerpt: 'дословная фраза из текста источника' },
+  { kind: 'clarification', value: 'Кто согласует результат?', excerpt: 'фраза, из которой следует вопрос', addressedToRole: 'Клиент: ЛПР' },
+], null, 2);
+
 const KIND_LABELS: Record<SourceKind, string> = { note: 'Заметка', transcript: 'Расшифровка (текст)', email: 'Письмо (текст)', link: 'Ссылка', file_text: 'Текст из файла' };
 const PC_LABELS: Record<ProposedChange['kind'], string> = {
   fact: 'Сведение', metric: 'Метрика', budget_mention: 'Упоминание бюджета', client_wish: 'Пожелание клиента',
@@ -15,14 +20,16 @@ export function SourcesTab({ v, run }: TabProps) {
   const conflicts = v.conflicts.filter((c) => c.status === 'open');
   return (
     <div className="stack">
-      <Demo>«Демо-разбор» — детерминированные правила по ключевым словам, а не AI и не транскрибация. Разбор только предлагает изменения: каждое принимает человек. Записи созвонов прототип не делает и не принимает.</Demo>
+      <div className="notice demo">
+        <strong>ИИ не подключён.</strong> Есть два честных режима: <em>разбор по ключевым словам</em> (фиксированные правила, не ИИ) и <em>импорт структурированного результата</em>, подготовленного человеком во внешнем инструменте. В обоих случаях система только предлагает изменения с цитатой из источника; каждое принимает человек. Повторная обработка не создаёт дублей и не меняет принятые сведения. Записи созвонов прототип не делает; созвон и полный бриф не обязательны — если письма достаточно, идите дальше.
+      </div>
       <section className="card" aria-labelledby="h-conf">
         <h2 id="h-conf">Противоречия <span className="muted">({conflicts.length})</span></h2>
         {conflicts.length === 0 ? <Empty>Открытых противоречий нет</Empty> : conflicts.map((c) => <ConflictBox key={c.id} c={c} v={v} run={run} />)}
       </section>
       <section className="card" aria-labelledby="h-queue">
         <h2 id="h-queue">Очередь предложенных изменений <span className="muted">({pending.length})</span></h2>
-        {pending.length === 0 ? <Empty>Нечего разбирать. Добавьте источник и запустите демо-разбор.</Empty> : (
+        {pending.length === 0 ? <Empty>Нечего разбирать. Добавьте источник и запустите разбор по ключевым словам или импортируйте структурированный результат.</Empty> : (
           <div className="table-wrap">
             <table className="t stack-sm">
               <thead><tr><th>Тип</th><th>Предложение</th><th>Цитата</th><th>Пояснение</th><th>Решение</th></tr></thead>
@@ -53,7 +60,9 @@ function PcRow({ p, v, run }: { p: ProposedChange } & Pick<TabProps, 'v' | 'run'
   const src = v.sources.find((s) => s.id === p.sourceId);
   return (
     <tr>
-      <td data-label="Тип"><Badge>{PC_LABELS[p.kind]}</Badge>{p.key && <div className="small">{FACT_KEY_LABELS[p.key]}</div>}</td>
+      <td data-label="Тип"><Badge>{PC_LABELS[p.kind]}</Badge>{p.key && <div className="small">{FACT_KEY_LABELS[p.key]}</div>}
+        <div className="small muted">{p.origin === 'structured_import' ? 'импорт структурированного результата' : 'ключевые слова (не ИИ)'}</div>
+        {p.quoteFound === false && <Badge kind="warn">цитата не найдена в источнике</Badge>}</td>
       <td data-label="Предложение">{formatFactValue(p.value)}{p.addressedToRole && <div className="small">Кому: {p.addressedToRole}</div>}</td>
       <td data-label="Цитата" className="small">«{p.excerpt}»{p.timecode && ` [${p.timecode}]`}<div className="muted">{src?.title}</div></td>
       <td data-label="Пояснение" className="small">{p.note}</td>
@@ -98,6 +107,8 @@ function SourceItem({ s, run }: { s: Source } & Pick<TabProps, 'v' | 'run'>) {
   const [edit, setEdit] = useState(false);
   const [text, setText] = useState(s.text);
   const [reason, setReason] = useState('');
+  const [imp, setImp] = useState(false);
+  const [json, setJson] = useState(IMPORT_TEMPLATE);
   return (
     <article className="card" style={{ background: s.status === 'active' ? undefined : '#fafbfd' }}>
       <div className="row">
@@ -107,12 +118,13 @@ function SourceItem({ s, run }: { s: Source } & Pick<TabProps, 'v' | 'run'>) {
         <Badge kind={s.status === 'active' ? 'ok' : 'warn'}>{{ active: 'Актуален', superseded: 'Заменён новой версией', quarantined: 'Карантин: нужно решение', rejected: 'Отклонён' }[s.status]}</Badge>
         <Badge kind="draft">{s.original.filename ? `Файл «${s.original.filename}» не сохранён — сохранён только текст` : 'Сохранён только текст'}</Badge>
       </div>
-      <p className="small muted">Дата источника: {fmtDate(s.receivedAt)} · компания в источнике: {s.declaredCompany ?? 'не указана'} · добавлен {fmtDateTime(s.createdAt)}{s.parsedAt && ` · демо-разбор ${fmtDateTime(s.parsedAt)}`}</p>
+      <p className="small muted">Дата источника: {fmtDate(s.receivedAt)} · компания в источнике: {s.declaredCompany ?? 'не указана'} · добавлен {fmtDateTime(s.createdAt)}{s.parsedAt && ` · разбор по ключевым словам ${fmtDateTime(s.parsedAt)}`}</p>
       {s.link && <p className="small">Ссылка (записана как текст, прототип её не открывает и не проверяет): <span className="mono">{s.link}</span></p>}
       {s.quarantineReason && <div className="notice error">{s.quarantineReason}</div>}
       <details><summary className="small">Текст источника ({s.text.length} симв.)</summary><pre className="small" style={{ whiteSpace: 'pre-wrap' }}>{s.text}</pre></details>
       <div className="row" style={{ marginTop: 6 }}>
-        {s.status === 'active' && !s.parsedAt && <button className="btn small primary" disabled={a.busy} onClick={() => void a.run(() => run({ type: 'parseSource', payload: { sourceId: s.id } }))}>Демо-разбор (правила, не AI)</button>}
+        {s.status === 'active' && <button className={`btn small ${s.parsedAt ? '' : 'primary'}`} disabled={a.busy} onClick={() => void a.run(() => run({ type: 'parseSource', payload: { sourceId: s.id } }))}>{s.parsedAt ? 'Разобрать ещё раз (без дублей)' : 'Разбор по ключевым словам (не ИИ)'}</button>}
+        {s.status === 'active' && <button className="btn small" onClick={() => setImp(!imp)} aria-expanded={imp}>Импорт структурированного результата</button>}
         {s.status === 'active' && <button className="btn small" onClick={() => setEdit(!edit)} aria-expanded={edit}>Новая версия текста</button>}
       </div>
       {s.status === 'quarantined' && (
@@ -121,6 +133,18 @@ function SourceItem({ s, run }: { s: Source } & Pick<TabProps, 'v' | 'run'>) {
           <button className="btn small" disabled={a.busy} onClick={() => void a.run(() => run({ type: 'decideSourceAttribution', payload: { sourceId: s.id, accept: true, comment } }))}>Относится к этой возможности</button>
           <button className="btn small" disabled={a.busy} onClick={() => void a.run(() => run({ type: 'decideSourceAttribution', payload: { sourceId: s.id, accept: false, comment } }))}>Не относится — отклонить</button>
         </div>
+      )}
+      {imp && (
+        <form className="stack" style={{ marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); void a.run(async () => {
+          let items: unknown;
+          try { items = JSON.parse(json); } catch (err) { throw new Error(`Некорректный JSON: ${(err as Error).message}`); }
+          await run({ type: 'importStructuredProposals', payload: { sourceId: s.id, items: (Array.isArray(items) ? items : (items as { items?: unknown[] }).items ?? []) as never } });
+          setImp(false);
+        }); }}>
+          <Field label="Структурированный результат (JSON-массив)" multiline value={json} onChange={setJson}
+            hint="kind: fact | metric | budget_mention | client_wish | promise_candidate | conditional | clarification; для fact — key (request_verbatim, business_goal, product, audience, geography, deadline, constraints, materials, decision_maker); excerpt — дословная цитата из источника. Цитата сверяется с текстом; все предложения проверяет человек." />
+          <button className="btn small primary" disabled={a.busy}>Проверить и добавить в очередь</button>
+        </form>
       )}
       {edit && (
         <form className="stack" style={{ marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); void a.run(async () => { await run({ type: 'updateSourceText', payload: { sourceId: s.id, text, reason } }); setEdit(false); }); }}>

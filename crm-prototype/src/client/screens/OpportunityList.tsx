@@ -3,6 +3,7 @@ import { api } from '../api';
 import { ROUTE_LABELS, STAGE_LABELS, WORK_STAGES } from '../../domain/stages';
 import type { Stage } from '../../domain/types';
 import type { ListItem } from '../types';
+import { isWebDemo } from '../mode';
 import { Badge, Empty, ErrorBox, Field, fmtDate, Select, useApp } from '../ui';
 
 function Tile({ o, companies, today }: { o: ListItem; companies: Map<string, string>; today: string }) {
@@ -91,7 +92,7 @@ export function OpportunityList() {
           <Select label="Маршрут" value={route} onChange={setRoute} placeholder="Любой" options={[['A', ROUTE_LABELS.A], ['B', ROUTE_LABELS.B], ['C', ROUTE_LABELS.C], ['none', 'Не выбран']]} />
           <Select label="Блокеры" value={blocker} onChange={setBlocker} placeholder="Неважно" options={[['yes', 'Есть блокеры'], ['no', 'Без блокеров']]} />
         </div>
-        <p className="small muted" style={{ marginTop: 8 }}>Показано: {filtered.length} из {items.length}. Сервер возвращает только возможности, доступные вашей роли.</p>
+        <p className="small muted" style={{ marginTop: 8 }}>Показано: {filtered.length} из {items.length}. {isWebDemo() ? 'Список отфильтрован по роли кодом в браузере (веб-демо, без защиты).' : 'Сервер возвращает только возможности, доступные вашей роли.'}</p>
       </section>
       {filtered.length === 0 && <Empty>Ничего не найдено. Измените фильтры или создайте новый запрос.</Empty>}
       {mode === 'board' && filtered.length > 0 && (

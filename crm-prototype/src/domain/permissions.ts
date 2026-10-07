@@ -5,7 +5,9 @@ import type { CommandType } from './commands';
 import { computeFor, type EstimateResult } from './economics';
 import type { Opportunity, Role, User } from './types';
 import { approvalBlockers } from './commands';
-import { currentAcceptance, currentAuthorization } from './launch';
+import { agreedTerms, currentAcceptance, currentAuthorization, type AgreedTerms } from './launch';
+import { buildMaterialSnapshot, diffMaterial, type MaterialSnapshot } from './approval';
+import type { ApprovalCategory } from './types';
 
 /** Решения, которые ждут владельца. */
 export function ownerDecisions(opp: Opportunity): string[] {
@@ -146,7 +148,34 @@ export interface RestrictedEstimate {
   issues: { message: string }[];
 }
 
-export type OpportunityView = Opportunity & { computed: Computed; viewRole: Role; restricted: string[] };
+export interface VersionChange { proposalId: string; againstVersion: number; categories: ApprovalCategory[]; details: string[] }
+
+export type OpportunityView = Opportunity & {
+  computed: Computed;
+  viewRole: Role;
+  restricted: string[];
+  /** Договорённости принятой версии КП (вычислены на полных данных; содержат только клиентские суммы). */
+  handoffTerms: AgreedTerms | null;
+  /** Чем черновик новой версии отличается от последней утверждённой. */
+  versionChanges: VersionChange[];
+};
+
+function versionChanges(opp: Opportunity, financial: boolean): VersionChange[] {
+  const out: VersionChange[] = [];
+  for (const p of opp.proposals.filter((x) => x.status === 'draft')) {
+    const prevApproval = [...opp.approvals].filter((a) => a.proposalVersionId !== p.id).sort((a, b) => a.approvedAt.localeCompare(b.approvedAt)).pop();
+    if (!prevApproval) continue;
+    const prev = opp.proposals.find((x) => x.id === prevApproval.proposalVersionId);
+    const d = diffMaterial(prevApproval.snapshot as MaterialSnapshot, buildMaterialSnapshot(opp, p));
+    const hidden: ApprovalCategory[] = financial ? [] : ['costs', 'margin', 'commission'];
+    out.push({
+      proposalId: p.id, againstVersion: prev?.number ?? 0,
+      categories: d.categories.filter((c) => !hidden.includes(c)),
+      details: d.details.filter((x) => financial || !/затраты|маржа|комисси/i.test(x)),
+    });
+  }
+  return out;
+}
 
 function computeAll(opp: Opportunity) {
   const out: Record<string, EstimateResult> = {};
@@ -163,7 +192,10 @@ export function viewFor(opp: Opportunity, user: User, role: Role): OpportunityVi
   const full = computeAll(opp);
   o.viewRole = role;
   o.restricted = [];
-  if (role === 'owner' || (role === 'presale_pm' && opp.pmCostVisibility)) {
+  const financial = role === 'owner' || (role === 'presale_pm' && opp.pmCostVisibility);
+  o.handoffTerms = role === 'specialist' ? null : agreedTerms(opp);
+  o.versionChanges = role === 'specialist' ? [] : versionChanges(opp, financial);
+  if (financial) {
     o.computed = { estimates: full };
     return o;
   }

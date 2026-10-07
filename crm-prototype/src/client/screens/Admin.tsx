@@ -16,7 +16,7 @@ export function Admin() {
   const b = useAction();
   const [backupText, setBackupText] = useState('');
   const [copied, setCopied] = useState('');
-  if (session.actingRole !== 'owner') return <div className="notice">Резервные копии, импорт и очистка демо-данных доступны только владельцу. Сервер проверяет это на каждом запросе.</div>;
+  if (session.actingRole !== 'owner') return <div className="notice">Резервные копии, импорт и очистка демо-данных доступны только владельцу. {isWebDemo() ? 'В веб-демо это проверяет код в браузере — защиты сервера здесь нет.' : 'Локальный сервер проверяет это на каждом запросе.'}</div>;
   return (
     <div className="stack">
       <h1>Данные и настройки</h1>
@@ -47,7 +47,7 @@ export function Admin() {
       </section>
       <section className="card">
         <h2>Импорт резервной копии</h2>
-        <p className="small">Сначала проверка: версия схемы, типы, размер (до 10 МБ) и связи. Текущая база не меняется до отдельного подтверждения. Восстановление идёт в отдельный файл базы; прежний файл сохраняется рядом.</p>
+        <p className="small">Сначала проверка: версия схемы, типы, размер (до 10 МБ) и связи. {isWebDemo() ? 'Текущие данные в браузере не меняются до отдельного подтверждения. Файла базы в веб-демо нет: копия загружается в память браузера.' : 'Текущая база не меняется до отдельного подтверждения. Восстановление идёт в отдельный файл базы; прежний файл сохраняется рядом.'}</p>
         <label className="field">
           <span className="lbl">Файл копии (.json)</span>
           <input type="file" accept="application/json,.json" onChange={(e) => {

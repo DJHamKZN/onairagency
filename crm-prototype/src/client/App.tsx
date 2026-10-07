@@ -10,6 +10,7 @@ import { OpportunityCard } from './screens/OpportunityCard';
 import { FindingsRegistry } from './screens/FindingsRegistry';
 import { ApprovalsJournal } from './screens/ApprovalsJournal';
 import { Admin } from './screens/Admin';
+import { About } from './screens/About';
 
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash || '#/');
@@ -120,6 +121,7 @@ const NAV: [string, string][] = [
   ['#/findings', 'Реестр находок'],
   ['#/approvals', 'Журнал утверждений'],
   ['#/admin', 'Данные и настройки'],
+  ['#/about', 'Что работает'],
 ];
 
 export function App() {
@@ -154,6 +156,7 @@ export function App() {
   else if (parts[0] === 'findings') screen = <FindingsRegistry />;
   else if (parts[0] === 'approvals') screen = <ApprovalsJournal />;
   else if (parts[0] === 'admin') screen = <Admin />;
+  else if (parts[0] === 'about') screen = <About />;
   else screen = <Dashboard />;
   const current = '#/' + (parts[0] === 'opp' || parts[0] === 'new' ? 'opps' : parts[0]);
 
@@ -170,7 +173,7 @@ export function App() {
         <div className="who">
           <span>{session.user.displayName}</span>
           <label className="row small" style={{ gap: 4 }}>
-            <span>Действую как:</span>
+            <span>{isWebDemo() ? 'Демо-роль (без авторизации):' : 'Действую как:'}</span>
             <select
               aria-label="Роль в текущих действиях"
               value={session.actingRole}
