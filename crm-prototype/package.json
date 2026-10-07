@@ -11,7 +11,7 @@
     "dev:server": "node --disable-warning=ExperimentalWarning --import tsx --watch server/main.ts",
     "dev:client": "node scripts/build.mjs --watch",
     "build": "node scripts/build.mjs",
-    "start": "node --disable-warning=ExperimentalWarning --import tsx server/main.ts",
+    "start": "node scripts/check-node.mjs && node --disable-warning=ExperimentalWarning --import tsx server/main.ts",
     "seed": "node --disable-warning=ExperimentalWarning --import tsx server/cli.ts seed",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node --disable-warning=ExperimentalWarning --import tsx --test --test-reporter=spec tests/*.test.ts",
