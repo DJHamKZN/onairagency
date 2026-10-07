@@ -629,8 +629,27 @@ export interface ChecklistItem {
   updatedAt: ISODateTime | null;
 }
 
+/**
+ * Отметка из прежней версии чек-листа, у которой больше нет отдельного пункта (например, «Цель и первый результат» —
+ * теперь берётся из принятой версии КП). Хранится для истории при миграции данных, в условия запуска не входит.
+ */
+export interface LegacyChecklistItem {
+  key: string;
+  label: string;
+  status: string;
+  note: string | null;
+  naReason: string | null;
+  updatedBy: string | null;
+  updatedAt: ISODateTime | null;
+  /** Куда перенесён смысл пункта в текущей версии. */
+  nowCoveredBy: string;
+  migratedAt: ISODateTime;
+}
+
 export interface LaunchChecklist {
   items: ChecklistItem[];
+  /** Отметки прежней версии чек-листа (только чтение). */
+  legacyItems?: LegacyChecklistItem[];
   payment: { status: 'unknown' | 'paid_confirmed_manually' | 'deferred_by_terms' | 'not_required_by_terms'; note: string | null };
   linkSharedAt: ISODateTime | null; // «ссылка передана» — не является приёмкой
 }

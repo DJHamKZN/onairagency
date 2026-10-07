@@ -28,6 +28,8 @@ export const EVENT_LABELS: Record<string, string> = {
   launch_authorized: 'разрешил запуск',
   missing_questions_created: 'создал недостающие вопросы',
   audit_set_saved: 'сохранил комплект документов аудита',
+  schema_migrated: 'данные приведены к новой версии (миграция)',
+  item_updated: 'отметил пункт чек-листа запуска (прежняя версия)',
 };
 
 export const COMMAND_LABELS: Record<string, string> = {

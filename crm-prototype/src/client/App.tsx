@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
-import { isWebDemo } from './mode';
+import { demoNotice, isWebDemo } from './mode';
 import { AppCtx, ErrorBox, Field, useAction, type Session, type TeamMember } from './ui';
 import type { Role } from '../domain/types';
 import { Dashboard } from './screens/Dashboard';
@@ -20,6 +20,17 @@ function useHash() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
   return hash;
+}
+
+function DemoNotice() {
+  const [hidden, setHidden] = useState(false);
+  const text = demoNotice();
+  if (!text || hidden) return null;
+  return (
+    <div className="notice" role="status" style={{ margin: '8px 16px' }}>
+      {text} <button className="btn small" onClick={() => setHidden(true)}>Понятно</button>
+    </div>
+  );
 }
 
 export function SimulationBanner() {
@@ -145,9 +156,9 @@ export function App() {
   useEffect(() => { void refresh(); }, [refresh]);
 
   if (state === 'loading') return (<><SimulationBanner /><main><p>Загрузка…</p></main></>);
-  if (state === 'anon' || !session) return (<><SimulationBanner /><Login onDone={() => void refresh()} /></>);
+  if (state === 'anon' || !session) return (<><SimulationBanner /><DemoNotice /><Login onDone={() => void refresh()} /></>);
 
-  const teamName = (id: string | null | undefined) => (id ? team.find((t) => t.id === id)?.displayName ?? id : 'не назначен');
+  const teamName = (id: string | null | undefined) => (id === 'system' ? 'Система (обновление данных)' : id ? team.find((t) => t.id === id)?.displayName ?? id : 'не назначен');
   const parts = hash.replace(/^#\/?/, '').split('/');
   let screen;
   if (parts[0] === 'opps') screen = <OpportunityList />;
@@ -163,6 +174,7 @@ export function App() {
   return (
     <AppCtx.Provider value={{ session, team, teamName, refreshSession: () => void refresh() }}>
       <SimulationBanner />
+      <DemoNotice />
       <header className="topbar">
         <span className="brand">ON AIR CRM<small>прототип</small></span>
         <nav className="main" aria-label="Основная навигация">

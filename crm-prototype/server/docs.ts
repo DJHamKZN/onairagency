@@ -235,6 +235,9 @@ export function handoffBlocks(e: HandoffExport): Block[] {
     { h: 'Оплата', p: `${v(t.payment)}. Фактический статус: ${e.paymentStatus}` },
     { h: 'Подтверждённые обещания', p: t.confirmedPromises.map((x) => `${x.what} (${x.byRole})`).join('\n') || 'Нет' },
     { h: 'Проверка готовности', table: [['Пункт', 'Статус', 'Комментарий / отклонение'], ...e.checks.map((c) => [c.item, c.status, c.note ?? '—'])] },
+    ...(e.previousChecks.length
+      ? [{ h: 'Отметки прежней версии чек-листа (для истории)', table: [['Пункт', 'Отметка', 'Комментарий', 'Где теперь'], ...e.previousChecks.map((c) => [c.item, c.status, c.note ?? '—', c.coveredBy])] }]
+      : []),
     { h: 'Что ещё блокирует передачу', p: e.blockers.length ? e.blockers.join('\n') : 'Блокеров нет' },
   ];
 }

@@ -3,9 +3,12 @@
  * Проверка ничего не меняет: сначала валидация и предварительный результат, затем — отдельное подтверждение.
  */
 import { z } from 'zod';
+import { CURRENT_SCHEMA_VERSION, migrateBackupObject, type OpportunityMigration } from './migrate';
 import type { ChangeEvent, Company, Contact, Opportunity, Settings, Snapshot, User } from './types';
 
-export const SCHEMA_VERSION = 1;
+/** 2 — с 07.10.2026 (новый чек-лист запуска). Копии версии 1 приводятся к текущей схеме при проверке. */
+export const SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
+export const MIN_SUPPORTED_SCHEMA_VERSION = 1;
 export const MAX_BACKUP_BYTES = 10 * 1024 * 1024;
 
 export const BACKUP_WARNING =
@@ -88,11 +91,16 @@ export interface ImportPreview {
   warnings: string[];
   counts: Record<string, number>;
   backup: Backup | null;
+  /** Какие карточки были приведены к текущей схеме (пусто, если копия уже в текущей схеме). */
+  migrated: OpportunityMigration[];
 }
 
-/** Полная проверка: размер → JSON → версия схемы → типы → ссылки. Ничего не записывает. */
-export function validateBackupText(text: string): ImportPreview {
-  const fail = (e: string): ImportPreview => ({ ok: false, errors: [e], warnings: [], counts: {}, backup: null });
+/**
+ * Полная проверка: размер → JSON → версия схемы → миграция к текущей схеме → типы → ссылки. Ничего не записывает в
+ * хранилище: возвращает приведённую копию и перечень изменений миграции.
+ */
+export function validateBackupText(text: string, now: string = new Date().toISOString()): ImportPreview {
+  const fail = (e: string): ImportPreview => ({ ok: false, errors: [e], warnings: [], counts: {}, backup: null, migrated: [] });
   if (new TextEncoder().encode(text).length > MAX_BACKUP_BYTES) return fail(`Файл больше ${MAX_BACKUP_BYTES / 1024 / 1024} МБ`);
   let raw: unknown;
   try {
@@ -103,16 +111,26 @@ export function validateBackupText(text: string): ImportPreview {
   if (!raw || typeof raw !== 'object') return fail('Ожидается объект резервной копии');
   const r = raw as Record<string, unknown>;
   if (r.format !== 'onair-crm-backup') return fail('Это не резервная копия ON AIR CRM (поле format)');
-  if (r.schemaVersion !== SCHEMA_VERSION) return fail(`Неподдерживаемая версия схемы: ${String(r.schemaVersion)}. Ожидается ${SCHEMA_VERSION}`);
+  if (typeof r.schemaVersion !== 'number' || !Number.isInteger(r.schemaVersion) || r.schemaVersion < MIN_SUPPORTED_SCHEMA_VERSION || r.schemaVersion > SCHEMA_VERSION)
+    return fail(`Неподдерживаемая версия схемы: ${String(r.schemaVersion)}. Поддерживаются ${MIN_SUPPORTED_SCHEMA_VERSION}–${SCHEMA_VERSION}`);
+  const { fromVersion, migrations } = migrateBackupObject(r, now);
   const parsed = backupSchema.safeParse(raw);
   if (!parsed.success)
-    return { ok: false, errors: parsed.error.issues.slice(0, 20).map((i) => `${i.path.join('.')}: ${i.message}`), warnings: [], counts: {}, backup: null };
+    return { ok: false, errors: parsed.error.issues.slice(0, 20).map((i) => `${i.path.join('.')}: ${i.message}`), warnings: [], counts: {}, backup: null, migrated: [] };
   const b = raw as Backup;
   const errors = referenceErrors(b);
+  const warnings: string[] = [];
+  if (migrations.length)
+    warnings.push(
+      `Копия схемы ${fromVersion} приведена к схеме ${SCHEMA_VERSION}: изменено карточек — ${migrations.length}. ` +
+        'Прежние отметки чек-листа запуска сохранены в «Отметках прежней версии», в журнал добавлены события миграции',
+    );
+  if (b.opportunities.some((o) => !o.isDemo)) warnings.push('В копии есть записи без признака демо-данных. Прототип не предназначен для реальных клиентских данных');
   return {
     ok: errors.length === 0,
     errors,
-    warnings: b.opportunities.some((o) => !o.isDemo) ? ['В копии есть записи без признака демо-данных. Прототип не предназначен для реальных клиентских данных'] : [],
+    warnings,
+    migrated: migrations,
     counts: {
       'Компании': b.companies.length,
       'Контакты': b.contacts.length,

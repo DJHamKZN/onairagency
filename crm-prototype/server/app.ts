@@ -3,6 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join, normalize, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { validateBackupText, MAX_BACKUP_BYTES, type Backup } from '../src/domain/backup';
+import { migrateStoredData } from './migrateStore';
 import { exportClientAudit, exportClientProposal, exportHandoff } from '../src/domain/clientExport';
 import { DomainError } from '../src/domain/errors';
 import type { Role, User } from '../src/domain/types';
@@ -26,6 +27,8 @@ export interface AppState {
 export function createState(dbPath: string, distDir = resolve('dist')): AppState {
   const db = openDb(dbPath);
   const repo = new Repo(db);
+  const migrated = migrateStoredData(repo);
+  if (migrated.length) console.log(`Данные приведены к текущей схеме: карточек — ${migrated.length} (подробности — в истории карточек).`);
   return { dbPath, db, repo, svc: new Service(repo), pendingImports: new Map(), distDir };
 }
 

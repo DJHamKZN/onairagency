@@ -9,7 +9,7 @@ import { createApp, createState, type AppState } from '../server/app';
 import { ensureUsers, seedDemo } from '../server/seed';
 import { openDb } from '../server/db';
 import { Repo } from '../server/repo';
-import { validateBackupText } from '../src/domain/backup';
+import { SCHEMA_VERSION, validateBackupText } from '../src/domain/backup';
 
 const PASS = 'api-test-pass';
 let dir: string;
@@ -242,7 +242,8 @@ describe('Резервная копия и импорт (18, 19, 23)', () => {
     assert.ok(!text.includes('scrypt:'), 'хэши паролей не экспортируются');
     const b = JSON.parse(text);
     assert.match(b.warning, /ВНУТРЕННЯЯ/);
-    assert.equal(b.schemaVersion, 1);
+    assert.equal(b.schemaVersion, SCHEMA_VERSION);
+    assert.equal(validateBackupText(text).migrated.length, 0, "копия текущей схемы не требует миграции");
     const before = state.repo.exportBackup();
     const pv = validateBackupText(text);
     assert.equal(pv.ok, true, pv.errors.join('\n'));

@@ -6,7 +6,7 @@
 import { clientExportReadiness } from './audit';
 import { worksOf } from './approval';
 import { computeFor } from './economics';
-import { agreedTerms, CHECKLIST_LABELS, CHECKLIST_STATUS_LABELS, handoffBlockers, type AgreedTerms } from './launch';
+import { agreedTerms, checklistLabel, checklistStatusLabel, handoffBlockers, type AgreedTerms } from './launch';
 import type { Company, ModuleKey, Opportunity, ProposalVersion } from './types';
 import { CLAIM_TYPE_LABELS, MODULE_LABELS, MODULE_STATUS_LABELS, PROPOSAL_STATUS_LABELS } from './types';
 
@@ -197,6 +197,8 @@ export interface HandoffExport {
   opportunity: string;
   terms: AgreedTerms;
   checks: { item: string; status: string; note: string | null }[];
+  /** Отметки прежней версии чек-листа (после миграции данных) — для истории. */
+  previousChecks: { item: string; status: string; note: string | null; coveredBy: string }[];
   paymentStatus: string;
   blockers: string[];
 }
@@ -210,7 +212,8 @@ export function exportHandoff(opp: Opportunity, company: Company): HandoffExport
     company: company.name,
     opportunity: opp.title,
     terms,
-    checks: opp.launch.items.map((i) => ({ item: CHECKLIST_LABELS[i.key], status: CHECKLIST_STATUS_LABELS[i.status], note: i.status === 'not_applicable' ? i.naReason : i.note })),
+    checks: opp.launch.items.map((i) => ({ item: checklistLabel(i.key), status: checklistStatusLabel(i.status), note: i.status === 'not_applicable' ? i.naReason : i.note })),
+    previousChecks: (opp.launch.legacyItems ?? []).map((l) => ({ item: l.label, status: checklistStatusLabel(l.status), note: l.status === 'not_applicable' ? l.naReason : l.note, coveredBy: l.nowCoveredBy })),
     paymentStatus: pay,
     blockers: handoffBlockers(opp),
   };

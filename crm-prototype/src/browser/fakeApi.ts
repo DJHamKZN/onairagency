@@ -51,15 +51,31 @@ function seedFresh() {
   seedDemoData(repo);
 }
 
+function setNotice(text: string) {
+  demoState.loadProblem = text;
+  (globalThis as { __ONAIR_DEMO_NOTICE__?: string }).__ONAIR_DEMO_NOTICE__ = text;
+}
+
 function boot() {
   const raw = load(DATA_KEY);
   if (raw) {
     const p = validateBackupText(raw);
     if (p.ok && p.backup) {
-      repo.importInto(p.backup);
+      repo.importInto(p.backup); // сохраняет приведённую к текущей схеме копию
       demoState.restoredFromStorage = true;
+      if (p.migrated.length)
+        setNotice(
+          `Данные, сохранённые прежней версией демо, приведены к текущей: карточек — ${p.migrated.length}. ` +
+            'Прежние отметки чек-листа запуска сохранены во вкладке «Запуск» → «Отметки прежней версии», событие миграции — в истории карточки.',
+        );
     } else {
-      demoState.loadProblem = 'Сохранённые в браузере данные не прошли проверку — загружены исходные демо-данные';
+      // Не перезаписываем непрочитанные данные: откладываем их под отдельным ключом, чтобы их можно было восстановить.
+      const keep = `${DATA_KEY}-unreadable-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+      try { localStorage.setItem(keep, raw); } catch { demoState.storageOk = false; }
+      setNotice(
+        `Сохранённые в браузере данные не прошли проверку (${p.errors.slice(0, 2).join('; ')}). Загружены исходные демо-данные; ` +
+          `прежние данные не удалены — они лежат в хранилище браузера под ключом «${keep}».`,
+      );
       seedFresh();
     }
   } else seedFresh();

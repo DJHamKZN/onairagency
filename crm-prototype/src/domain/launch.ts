@@ -33,6 +33,25 @@ export const CHECKLIST_STATUS_LABELS: Record<ChecklistStatus, string> = {
 
 export const CHECKLIST_KEYS = Object.keys(CHECKLIST_LABELS) as ChecklistKey[];
 
+/** Пункты чек-листа прежней версии (до 07.10.2026) и где их смысл находится теперь. Нужны для миграции сохранённых данных. */
+export const LEGACY_CHECKLIST: Record<string, { label: string; nowCoveredBy: string }> = {
+  goal_first_result: { label: 'Цель и первый результат', nowCoveredBy: 'Договорённости из принятой версии КП (результат и приёмка)' },
+  accepted_scope: { label: 'Принятое КП и объём', nowCoveredBy: 'Договорённости из принятой версии КП (работы)' },
+  payment_status: { label: 'Фактический статус условий оплаты', nowCoveredBy: 'Отдельное поле «Фактический статус условий оплаты»' },
+  scope_exclusions: { label: 'Состав и исключения', nowCoveredBy: 'Договорённости из принятой версии КП (исключения)' },
+  revisions: { label: 'Правки', nowCoveredBy: 'Договорённости из принятой версии КП (правки)' },
+  promises: { label: 'Обещания агентства разобраны', nowCoveredBy: 'Обещания агентства во «Вводных» (блокер, пока есть «обсуждалось»)' },
+};
+
+/** Название пункта для показа. Никогда не возвращает undefined: неизвестный идентификатор показывается как есть. */
+export function checklistLabel(key: string): string {
+  return (CHECKLIST_LABELS as Record<string, string>)[key] ?? LEGACY_CHECKLIST[key]?.label ?? `Пункт «${key}» (неизвестный)`;
+}
+
+export function checklistStatusLabel(status: string): string {
+  return (CHECKLIST_STATUS_LABELS as Record<string, string>)[status] ?? (status === 'done' ? 'Выполнено (прежняя версия)' : status);
+}
+
 export function emptyChecklist(): LaunchChecklist {
   return {
     items: CHECKLIST_KEYS.map((key): ChecklistItem => ({ key, status: 'open', note: null, naReason: null, deviationDecision: null, updatedBy: null, updatedAt: null })),
@@ -135,9 +154,9 @@ export function packageBlockers(opp: Opportunity): string[] {
   if (!latest || latest.status !== 'accepted') b.push('Последняя версия КП не принята клиентом');
   else if (!activeApprovalFor(opp, latest.id)) b.push('У принятой версии КП нет утверждения экономики владельцем');
   for (const i of opp.launch.items) {
-    if (i.status === 'open') b.push(`Не проверено: «${CHECKLIST_LABELS[i.key]}»`);
-    if (i.status === 'deviation') b.push(`Отклонение не устранено: «${CHECKLIST_LABELS[i.key]}» — ${i.note ?? ''}. Устраните, примите владельцем как риск или создайте новую версию КП, если меняются договорённости`);
-    if (i.status === 'not_applicable' && !i.naReason?.trim()) b.push(`«${CHECKLIST_LABELS[i.key]}»: «неприменимо» без причины`);
+    if (i.status === 'open') b.push(`Не проверено: «${checklistLabel(i.key)}»`);
+    if (i.status === 'deviation') b.push(`Отклонение не устранено: «${checklistLabel(i.key)}» — ${i.note ?? ''}. Устраните, примите владельцем как риск или создайте новую версию КП, если меняются договорённости`);
+    if (i.status === 'not_applicable' && !i.naReason?.trim()) b.push(`«${checklistLabel(i.key)}»: «неприменимо» без причины`);
   }
   if (opp.launch.payment.status === 'unknown') b.push('Фактический статус условий оплаты не указан');
   const undecided = opp.promises.filter((p) => p.status === 'discussed');

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api, download } from '../../api';
 import type { HandoffExport } from '../../../domain/clientExport';
-import { CHECKLIST_LABELS, CHECKLIST_STATUS_LABELS, currentAcceptance, currentAuthorization, handoffBlockers, packageBlockers } from '../../../domain/launch';
+import { CHECKLIST_STATUS_LABELS, checklistLabel, checklistStatusLabel, currentAcceptance, currentAuthorization, handoffBlockers, packageBlockers } from '../../../domain/launch';
 import { formatKop } from '../../../domain/money';
 import type { ChecklistItem, ChecklistStatus, LaunchChecklist } from '../../../domain/types';
 import { isWebDemo } from '../../mode';
@@ -41,6 +41,7 @@ export function LaunchTab({ v, run }: TabProps) {
           </table>
         </div>
         <Payment v={v} run={run} canEdit={canEdit} />
+        <LegacyItems v={v} />
       </section>
       <section className="card" aria-labelledby="h-gates">
         <h2 id="h-gates">Отдельные события запуска</h2>
@@ -124,6 +125,35 @@ function AgreedTermsBlock({ v }: { v: TabProps['v'] }) {
   );
 }
 
+/** Отметки прежней версии чек-листа, перенесённые при миграции данных. Только чтение, в условия запуска не входят. */
+function LegacyItems({ v }: { v: TabProps['v'] }) {
+  const { teamName } = useApp();
+  const items = v.launch.legacyItems ?? [];
+  if (!items.length) return null;
+  return (
+    <details className="legacy" style={{ marginTop: 12 }}>
+      <summary>Отметки прежней версии чек-листа ({items.length}) — сохранены при обновлении {fmtDate(items[0].migratedAt)}</summary>
+      <p className="small muted">Этих пунктов больше нет в проверке готовности: их смысл теперь находится в другом месте (см. колонку «Где теперь»). Отметки показаны для истории и не влияют на запуск.</p>
+      <div className="table-wrap">
+        <table className="t stack-sm">
+          <thead><tr><th>Пункт (прежний)</th><th>Отметка</th><th>Комментарий</th><th>Кто и когда</th><th>Где теперь</th></tr></thead>
+          <tbody>
+            {items.map((l, idx) => (
+              <tr key={l.key + idx}>
+                <td data-label="Пункт">{l.label}</td>
+                <td data-label="Отметка">{checklistStatusLabel(l.status)}</td>
+                <td data-label="Комментарий">{l.status === 'not_applicable' ? l.naReason ?? '—' : l.note ?? '—'}</td>
+                <td data-label="Кто и когда">{l.updatedBy ? `${teamName(l.updatedBy)}, ${fmtDateTime(l.updatedAt)}` : '—'}</td>
+                <td data-label="Где теперь">{l.nowCoveredBy}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
+  );
+}
+
 function ItemRow({ i, run, canEdit, owner }: { i: ChecklistItem; run: TabProps['run']; canEdit: boolean; owner: boolean }) {
   const [edit, setEdit] = useState(false);
   const [status, setStatus] = useState<Exclude<ChecklistStatus, 'deviation_accepted'>>(i.status === 'deviation_accepted' ? 'deviation' : i.status);
@@ -134,8 +164,8 @@ function ItemRow({ i, run, canEdit, owner }: { i: ChecklistItem; run: TabProps['
   const err = a.error as { field?: string; message?: string } | null;
   return (
     <tr>
-      <td data-label="Проверка">{CHECKLIST_LABELS[i.key]}</td>
-      <td data-label="Статус"><Badge kind={i.status === 'ready' ? 'ok' : i.status === 'open' || i.status === 'deviation' ? 'warn' : undefined}>{CHECKLIST_STATUS_LABELS[i.status]}</Badge></td>
+      <td data-label="Проверка">{checklistLabel(i.key)}</td>
+      <td data-label="Статус"><Badge kind={i.status === 'ready' ? 'ok' : i.status === 'open' || i.status === 'deviation' ? 'warn' : undefined}>{checklistStatusLabel(i.status)}</Badge></td>
       <td data-label="Комментарий" className="small">
         {i.status === 'not_applicable' ? `Причина: ${i.naReason}` : i.note ?? '—'}
         {i.deviationDecision && <div>Решение владельца: {i.deviationDecision.reason}</div>}
@@ -144,7 +174,7 @@ function ItemRow({ i, run, canEdit, owner }: { i: ChecklistItem; run: TabProps['
         {canEdit && <button className="btn small" aria-expanded={edit} onClick={() => setEdit(!edit)}>Отметить</button>}
         {owner && i.status === 'deviation' && (
           <form className="row" style={{ marginTop: 4 }} onSubmit={(e) => { e.preventDefault(); void a.run(() => run({ type: 'decideDeviation', payload: { key: i.key, reason } })); }}>
-            <input type="text" aria-label={`Почему отклонение допустимо: ${CHECKLIST_LABELS[i.key]}`} placeholder="почему допустимо" value={reason} onChange={(e) => setReason(e.target.value)} style={{ maxWidth: 180 }} />
+            <input type="text" aria-label={`Почему отклонение допустимо: ${checklistLabel(i.key)}`} placeholder="почему допустимо" value={reason} onChange={(e) => setReason(e.target.value)} style={{ maxWidth: 180 }} />
             <button className="btn small">Принять как риск</button>
           </form>
         )}

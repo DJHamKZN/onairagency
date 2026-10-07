@@ -12,7 +12,7 @@ import { hashOf } from './hash';
 import { DomainError, today, type Ctx } from './errors';
 import { FACT_KEY_LABELS, SINGLE_KEYS, formatFactValue } from './labels';
 import {
-  CHECKLIST_LABELS, activeApprovalFor, currentAcceptance, emptyChecklist, handoffBlockers, latestMainProposal,
+  checklistLabel, activeApprovalFor, currentAcceptance, emptyChecklist, handoffBlockers, latestMainProposal,
   looksLikeSecret, packageBlockers, packageHash,
 } from './launch';
 import { STAGE_LABELS, WORK_STAGES, moveBlockers, stageIndex } from './stages';
@@ -1094,9 +1094,9 @@ export function applyCommand(input: Opportunity, cmd: Command, ctx: Ctx, env: { 
       const st = cmd.payload.status;
       if (!['open', 'ready', 'deviation', 'not_applicable'].includes(st)) throw new DomainError('validation', 'Недопустимый статус проверки');
       if (st === 'not_applicable' && !cmd.payload.naReason?.trim())
-        throw new DomainError('validation', `«${CHECKLIST_LABELS[item.key]}»: для «неприменимо» нужна причина`, ['Причина неприменимости'], 'naReason');
+        throw new DomainError('validation', `«${checklistLabel(item.key)}»: для «неприменимо» нужна причина`, ['Причина неприменимости'], 'naReason');
       if (st === 'deviation' && !cmd.payload.note?.trim())
-        throw new DomainError('validation', `«${CHECKLIST_LABELS[item.key]}»: опишите отклонение — что не совпадает с договорённостями или не готово`, ['Описание отклонения'], 'note');
+        throw new DomainError('validation', `«${checklistLabel(item.key)}»: опишите отклонение — что не совпадает с договорённостями или не готово`, ['Описание отклонения'], 'note');
       if (looksLikeSecret(cmd.payload.note) || looksLikeSecret(cmd.payload.naReason))
         throw new DomainError('secret_detected', 'Похоже на пароль или ключ. Укажите ссылку на защищённое хранилище и ответственного, а не сам секрет', [], 'note');
       const before = clone(item);
