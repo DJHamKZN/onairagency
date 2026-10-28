@@ -170,7 +170,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     preloader:   true,  // заставка «ON AIR» при первом заходе (раз за сессию)
     smoothScroll:true,  // плавная инерционная прокрутка (только компьютер)
     cursor:      true,  // фирменный курсор с подписями (только компьютер)
-    stars:       true,  // интерактивное звёздное небо: всё поле реагирует на мышку (объём + звёзды расступаются)
+    stars:       true,  // интерактивное звёздное небо: всё поле реагирует на мышку: объём + звёзды тянутся к курсору нитями
     globe:       true,  // вращающаяся сфера из точек на первом экране (только компьютер)
     marquee:     true,  // бегущая строка с услугами под первым экраном
     stack:       true,  // карточки услуг наезжают друг на друга при прокрутке (только компьютер)
@@ -337,7 +337,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     if (old && old.parentNode) old.parentNode.insertBefore(cv, old.nextSibling); else body.insertBefore(cv, body.firstChild);
     var ctx = cv.getContext('2d');
     var W = 0, H = 0, dpr = 1, nodes = [], waves = [];
-    var R = 230, TH = 145, M = 110;  // радиус реакции на мышку, длина связей, запас за краем экрана
+    var R = 210, TH = 145, M = 110;  // радиус реакции на мышку, длина связей, запас за краем экрана
     var cam = { x: 0, y: 0 };           // «камера» — плавно следует за мышкой
 
     var sprite = (function () {
@@ -352,7 +352,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     })();
 
     function build() {
-      var n = Math.round(clamp((W + 2 * M) * (H + 2 * M) / (FINE ? 13500 : 21000), 40, 150));
+      var n = Math.round(clamp((W + 2 * M) * (H + 2 * M) / (FINE ? 11500 : 21000), 40, 170));
       nodes = [];
       for (var i = 0; i < n; i++) {
         var z = 0.3 + Math.random() * 0.7, a = Math.random() * Math.PI * 2, sp = (3 + Math.random() * 8) * z;
@@ -401,9 +401,9 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
         var bx = p.x - cam.x * 70 * p.z, tx = 0, ty = 0, g = 0;
         by -= cam.y * 45 * p.z;
         if (mOn) {
-          // возле курсора звёзды мягко расступаются, как линза
-          dx = bx - mx; dy = by - my; d2 = dx * dx + dy * dy;
-          if (d2 < R * R) { d = Math.sqrt(d2) || 1; var f = 1 - d / R; f *= f; var push = f * 75 * (0.4 + 0.6 * p.z); tx = dx / d * push; ty = dy / d * push; g = f * 0.7; }
+          // ближайшие звёзды мягко тянутся к курсору и загораются ярче
+          dx = mx - bx; dy = my - by; d2 = dx * dx + dy * dy;
+          if (d2 < R * R) { var f = 1 - Math.sqrt(d2) / R; tx = dx * f * 0.26 * p.z; ty = dy * f * 0.26 * p.z; g = f; }
         }
         for (j = 0; j < waves.length; j++) {
           var w = waves[j]; dx = bx - w.x; dy = by - w.y; d = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -428,12 +428,22 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
           }
         }
       }
+      // нити от курсора к ближайшим звёздам
+      if (mOn) {
+        for (i = 0; i < nodes.length; i++) {
+          p = nodes[i]; dx = p.rx - mx; dy = p.ry - my; d2 = dx * dx + dy * dy;
+          if (d2 < R * R) {
+            ctx.strokeStyle = 'rgba(255,95,130,' + ((1 - Math.sqrt(d2) / R) * 0.6).toFixed(3) + ')';
+            ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(p.rx, p.ry); ctx.stroke();
+          }
+        }
+      }
       // сами звёзды
       for (i = 0; i < nodes.length; i++) {
         p = nodes[i];
         var tw = 0.65 + 0.35 * Math.sin(t * 0.9 + p.tw);
-        var h = p.s * (4.2 + p.glow * 2.5);
-        ctx.globalAlpha = clamp((0.45 + 0.55 * p.z) * tw + p.glow * 0.4, 0, 1);
+        var h = p.s * (4.2 + p.glow * 3.5);
+        ctx.globalAlpha = clamp((0.45 + 0.55 * p.z) * tw + p.glow * 0.6, 0, 1);
         ctx.drawImage(sprite, p.rx - h, p.ry - h, h * 2, h * 2);
       }
       ctx.globalAlpha = 1;
@@ -676,7 +686,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
             if (p < 1) requestAnimationFrame(step); else el.textContent = el._oaFinal;
           })(t0);
         }, delay);
-      }, 0.5);
+      }, 0.15);
     };
   }
   var countersReady = function () {};
