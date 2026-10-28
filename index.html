@@ -950,7 +950,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
   function marquee() {
     var hero = doc.getElementById('hero');
     if (!CFG.marquee || !hero) return;
-    var words = ['Performance-маркетинг', 'Сквозная аналитика', 'ИИ и нейросети', 'Яндекс Директ', 'VK Реклама', 'SMM', 'ROMI', 'Стратегия', 'Креатив'];
+    var words = ['Performance-маркетинг', 'Сквозная аналитика', 'ИИ-автоматизация', 'Яндекс Директ', 'VK Реклама', 'SMM', 'ROMI', 'Стратегия', 'Креатив'];
     var star = '<svg class="oa-mq__star" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 0c.6 6.4 5.6 11.4 12 12-6.4.6-11.4 5.6-12 12-.6-6.4-5.6-11.4-12-12C6.4 11.4 11.4 6.4 12 0z"/></svg>';
     var grp = words.map(function (w) { return '<span class="oa-mq__it">' + w + '</span>' + star; }).join('');
     function row(cls) { return '<div class="oa-mq ' + cls + '"><div class="oa-mq__track"><div class="oa-mq__grp">' + grp + '</div><div class="oa-mq__grp">' + grp + '</div><div class="oa-mq__grp">' + grp + '</div></div></div>'; }
