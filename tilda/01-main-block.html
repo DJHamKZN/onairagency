@@ -1,0 +1,370 @@
+<!-- OnAir landing для блока T123 на Tilda. Мета/SEO (title, description, OG, favicon) заданы на уровне страницы Tilda — здесь их держать НЕ нужно (иначе дубль <head> в <body>). Оставлены только: шрифты, Schema.org, Tailwind, стили и контент. --> <!-- Google Fonts --> <link rel="preconnect" href="https://fonts.googleapis.com"> <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"> <!-- Schema.org Professional Service Microdata --> <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "ProfessionalService",
+        "name": "OnAir",
+        "@id": "https://onairagency.ru",
+        "url": "https://onairagency.ru",
+        "telephone": "+79178636603",
+  "email": "hameevartur@mail.ru",
+  "areaServed": {"@type": "Country", "name": "Россия"},
+  "sameAs": ["https://t.me/artur_ham"],
+        "priceRange": "$$$",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "ул. Спартаковская",
+          "addressLocality": "Казань",
+          "addressRegion": "Татарстан",
+          "postalCode": "420000",
+          "addressCountry": "RU"
+        },
+        "founder": { "@type": "Person", "name": "Артур Хамеев" },
+        "description": "Маркетинговое агентство полного цикла OnAir. Комплексный маркетинг с гарантией ROMI, ИИ-сквозная аналитика, реклама и упаковка.",
+        "openingHoursSpecification": {
+          "@type": "OpeningHoursSpecification",
+          "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+          "opens": "09:00",
+          "closes": "21:00"
+        }
+      }
+    </script> <!-- Tailwind CSS (Play CDN) --> <script src="https://cdn.tailwindcss.com"></script> <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              display: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+            },
+            zIndex: { '15': '15', '20': '20', '90': '90', '100': '100' },
+          }
+        }
+      }
+    </script> <!-- Lucide Icons --> <script src="https://unpkg.com/lucide@latest"></script> <!-- Site styles --> <style>
+html { scroll-behavior: smooth; background-color: #060606; }
+body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; background-color: #060606; }
+h1, h2, h3, h4, h5, h6 { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+.font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #060606; }
+::-webkit-scrollbar-thumb { background: #222; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #e11d48; }
+
+/* Glassmorphism utilities */
+.glass-panel { background: rgba(255,255,255,0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+.glass-panel-heavy { background: rgba(255,255,255,0.08); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.15); }
+.glass-panel-neon { background: rgba(255,255,255,0.06); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(225,29,72,0.3); box-shadow: 0 10px 35px rgba(225,29,72,0.08), inset 0 1px 1px rgba(255,255,255,0.05); }
+
+.text-gradient-neon { background: linear-gradient(135deg, #ffffff 40%, #e11d48 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+/* Reveal on scroll (only active when JS is enabled) */
+.js .reveal { opacity: 0; transform: translateY(24px); transition: opacity .8s ease, transform .8s ease; }
+.js .reveal.in { opacity: 1; transform: none; }
+
+/* Custom cursor */
+.cursor-glow {
+  pointer-events: none; position: fixed; width: 32px; height: 32px;
+  border: 2px solid #e11d48; border-radius: 50%; transform: translate(-50%,-50%);
+  transition: width .2s, height .2s, background-color .2s; z-index: 9999; mix-blend-mode: difference;
+}
+@media (max-width: 1024px) { .cursor-glow { display: none; } }
+
+#bg-canvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; filter: brightness(1.1); }
+</style> <script>document.documentElement.classList.add('js');</script> <div class="cursor-glow" id="custom-cursor"></div> <!-- 3D-style network background --> <canvas id="bg-canvas" aria-hidden="true"></canvas> <div class="relative min-h-screen bg-transparent text-gray-100 overflow-x-hidden"> <!-- ===================== HEADER ===================== --> <header id="main-header" class="fixed top-0 left-0 w-full z-100 transition-all duration-500 border-b bg-transparent py-5 border-transparent"> <div class="max-w-7xl mx-auto px-6 flex items-center justify-between"> <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="flex items-center gap-2 font-display text-2xl font-black tracking-tighter text-[#e11d48] uppercase focus:outline-none group hover:scale-[1.02] transition-transform duration-300" aria-label="Логотип OnAir"> <span class="relative flex h-2.5 w-2.5"> <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#e11d48] opacity-75"></span> <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#e11d48]"></span> </span> <img id="logo-header" src="https://lh3.googleusercontent.com/d/1GOx57BVjuKWpH7kF9S_NzlVETO4mRWZ0" alt="OnAir" referrerpolicy="no-referrer" class="h-8 w-auto object-contain brightness-110" onerror="this.style.display='none';document.getElementById('logo-header-fallback').style.display='inline'"> <span id="logo-header-fallback" style="display:none">ON<span class="text-white">AIR</span></span> </button> <nav class="hidden lg:flex items-center gap-8 text-[11px] font-bold tracking-widest uppercase text-white/50"> <button data-scroll="services" class="hover:text-white transition duration-300 cursor-pointer">Услуги</button> <button data-scroll="cases" class="hover:text-white transition duration-300 cursor-pointer">Кейсы</button> <button data-scroll="about" class="hover:text-white transition duration-300 cursor-pointer">О нас</button> <button data-scroll="audit-form" class="hover:text-white transition duration-300 cursor-pointer">Контакты</button> </nav> <div class="hidden lg:flex items-center gap-6"> <a href="tel:+79178636603" class="flex items-center gap-2 text-xs font-mono font-bold group text-white/70 hover:text-[#e11d48] transition duration-300"> <i data-lucide="phone" class="text-[#e11d48] group-hover:rotate-12 transition duration-300" style="width:13px;height:13px"></i> <span>+7 (917) 863-66-03</span> </a> <a href="#audit" class="inline-flex items-center px-5 py-2.5 bg-[#e11d48] text-white text-xs font-bold uppercase tracking-widest shadow-[0_0_30px_rgba(225,29,72,0.3)] hover:scale-105 transition-all duration-300 cursor-pointer">
+              Получить аудит бесплатно
+            </a> </div> <div class="flex lg:hidden items-center gap-2"> <a href="#audit" class="inline-flex items-center px-3.5 py-2.5 bg-[#e11d48] text-white text-[11px] font-bold uppercase tracking-wider rounded-lg shadow-[0_0_20px_rgba(225,29,72,0.3)] cursor-pointer whitespace-nowrap">
+              Заявка
+            </a> <button id="mobile-menu-toggle-btn" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/[0.03] border border-white/10 text-gray-300 hover:text-white shrink-0" aria-label="Открыть мобильное меню"> <i data-lucide="menu" id="menu-icon" style="width:20px;height:20px"></i> </button> </div> </div> </header> <!-- Mobile drawer --> <div id="mobile-navigation-drawer" class="hidden fixed top-[65px] left-0 w-full z-90 bg-[#060606]/95 backdrop-blur-2xl border-b border-white/10 p-6 flex-col gap-6 lg:hidden shadow-[0_15px_35px_rgba(0,0,0,0.9)]"> <nav class="flex flex-col gap-4 text-[11px] font-bold uppercase tracking-widest text-left"> <button data-scroll="services" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// Услуги</button> <button data-scroll="cases" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// Кейсы</button> <button data-scroll="about" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// О нас</button> <button data-scroll="audit-form" class="py-2.5 border-b border-white/10 text-white/50 hover:text-white transition cursor-pointer">// Контакты</button> </nav> <div class="flex flex-col gap-4 border-t border-white/10 pt-6 text-left"> <a href="tel:+79178636603" class="flex items-center gap-2 text-xs font-mono font-bold text-white/70"> <i data-lucide="phone" class="text-[#e11d48]" style="width:13px;height:13px"></i> <span>+7 (917) 863-66-03</span> </a> <a href="#audit" class="block text-center w-full py-4 bg-white text-black font-bold uppercase text-xs tracking-widest hover:bg-[#e11d48] hover:text-white transition-colors duration-300 cursor-pointer">
+            Получить аудит бесплатно
+          </a> </div> </div> <!-- ===================== HERO ===================== --> <section id="hero" class="min-h-screen relative pt-36 pb-20 flex flex-col justify-between items-center bg-transparent"> <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(225,29,72,0.015),transparent_60%)] pointer-events-none"></div> <div class="max-w-7xl mx-auto px-6 relative z-10 w-full flex-grow flex flex-col justify-center text-center lg:text-left mt-8"> <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center"> <div class="col-span-1 lg:col-span-8 space-y-8"> <div class="reveal inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/[0.03] border border-white/10 text-white/40 font-semibold"> <span class="w-1.5 h-1.5 bg-[#e11d48] rounded-full animate-pulse mr-1"></span>
+                МАРКЕТИНГОВОЕ АГЕНТСТВО ПОЛНОГО ЦИКЛА
+              </div> <h1 class="reveal text-4xl sm:text-6xl md:text-[68px] font-black text-white leading-[0.95] tracking-tighter uppercase"> <span class="block text-sm sm:text-base md:text-lg font-semibold tracking-[0.18em] text-white/60 mb-4">Маркетинговое агентство полного цикла в Казани</span> Генерируем прибыль, <br class="hidden md:inline" /> <span class="text-[#e11d48]">а не просто охваты</span> </h1> <p class="reveal text-white/80 text-base sm:text-lg font-normal leading-relaxed max-w-2xl">
+                Комплексный маркетинг с фокусом на окупаемость (<strong class="text-white font-semibold">ROMI</strong>). Выступаем как ваш удаленный отдел маркетинга: выстраиваем воронки, которые стабильно приносят окупаемых клиентов.
+              </p> <div class="reveal flex flex-col sm:flex-row gap-4 justify-center lg:justify-start items-center"> <button data-scroll="audit-form" class="w-full sm:w-auto px-8 py-4 bg-white text-black font-bold uppercase text-xs tracking-widest hover:bg-[#e11d48] hover:text-white transition-colors duration-300 cursor-pointer">Увеличить выручку</button> <button data-scroll="cases" class="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-[#e11d48] border border-white/10 text-white font-bold uppercase text-xs tracking-widest transition-colors duration-300 cursor-pointer">Смотреть кейсы</button> </div> </div> </div> </div> <!-- Proof ribbon --> <div class="w-full relative z-10 border-y border-white/10 bg-white/5 backdrop-blur-md mt-16 py-8 select-none"> <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center justify-between"> <div class="lg:col-span-6 flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left"> <span class="text-[11px] uppercase tracking-widest text-white/40 font-bold font-mono">Нам доверяют рост:</span> <div class="flex flex-wrap justify-center sm:justify-start items-center gap-x-6 gap-y-3 text-white/50"> <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">Скандинавия</span> <span class="text-white/20">|</span> <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">АМ Медика</span> <span class="text-white/20">|</span> <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">Жар-Свежар</span> <span class="text-white/20">|</span> <span class="text-sm font-semibold text-white/70 uppercase tracking-tight hover:text-white transition duration-300">Стомус</span> </div> </div> <div class="lg:col-span-6 flex items-center justify-center lg:justify-end gap-6 sm:gap-10 border-t lg:border-t-0 border-white/10 pt-6 lg:pt-0"> <div class="text-center lg:text-right"> <div class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tighter">9 лет</div> <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">На рынке</div> </div> <div class="w-px h-12 bg-white/10"></div> <div class="text-center lg:text-right"> <div class="text-3xl sm:text-4xl lg:text-5xl font-black text-[#e11d48] tracking-tighter">200+</div> <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">Проектов</div> </div> <div class="w-px h-12 bg-white/10"></div> <div class="text-center lg:text-right"> <div class="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-widest uppercase leading-none py-1">100+ млн</div> <div class="text-[10px] uppercase text-white/40 font-mono tracking-wider font-bold mt-1">Бюджеты в упр.</div> </div> </div> </div> </div> </section> <!-- ===================== ABOUT / FOUNDER ===================== --> <section id="about" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10"> <div class="absolute top-0 right-1/4 w-[400px] h-[400px] bg-[#e11d48]/5 rounded-full filter blur-[120px] pointer-events-none"></div> <div class="absolute bottom-0 left-1/4 w-[350px] h-[350px] bg-white/[0.02] rounded-full filter blur-[100px] pointer-events-none"></div> <div class="max-w-7xl mx-auto px-6 relative z-10"> <div class="mb-16"> <p class="reveal text-[#e11d48] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Философия партнерства</p> <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1] max-w-4xl">
+              Ваша выручка — <span class="text-gradient-neon">наша зона ответственности.</span> </h2> </div> <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch"> <div class="reveal lg:col-span-5 relative group rounded-3xl overflow-hidden glass-panel border border-white/10 flex flex-col justify-end h-[500px] lg:h-auto min-h-[450px]"> <div class="absolute inset-0 bg-gradient-to-t from-[#060606] via-black/10 to-transparent z-10"></div> <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent z-10"></div> <img src="https://lh3.googleusercontent.com/d/1g1ttZcG5WGfhQsE_TNG1Y2Y1ra0l_S0P" referrerpolicy="no-referrer" alt="Артур Хамеев — основатель и руководитель маркетингового агентства OnAir" class="absolute inset-0 w-full h-full object-cover object-top filter grayscale contrast-[1.05] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700 ease-out" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=700&h=900&q=80'"> <div class="absolute -inset-px bg-gradient-to-t from-[#e11d48]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-15"></div> <div class="relative z-20 p-8"> <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] uppercase font-sans font-bold tracking-wider bg-[#e11d48]/10 text-[#e11d48] border border-[#e11d48]/30 mb-3"> <span class="w-1.5 h-1.5 rounded-full bg-[#e11d48] animate-ping"></span>
+                  Основатель агентства
+                </span> <h3 class="text-2xl font-bold text-white tracking-tight">Артур Хамеев</h3> <p class="text-gray-400 text-sm mt-1">Лично проектирует архитектуру ключевых воронок для каждого проекта в OnAir.</p> </div> </div> <div class="lg:col-span-7 flex flex-col gap-6"> <div class="reveal glass-panel p-8 sm:p-10 rounded-3xl border border-white/10 relative group shrink-0"> <div class="absolute top-0 right-0 w-32 h-32 bg-white/[0.01] rounded-bl-full pointer-events-none"></div> <p class="text-lg sm:text-xl text-gray-300 font-normal leading-relaxed mb-6">
+                  «Суть подхода <strong class="text-white font-bold">OnAir</strong> — дать максимальный коммерческий результат любыми силами. Мы не продаем клики и лиды, мы встраиваемся в вашу команду как удаленный партнер по росту, завязывая свой доход напрямую на вашу окупаемость и ROMI».
+                </p> <p class="text-[#cbd5e1] text-sm leading-relaxed">
+                  Мы берем на себя аналитику, рекламу и стратегию. Строим долгосрочные <span class="text-[#e11d48] font-semibold">win-win отношения</span>, где мы по-настоящему зарабатываем только в том случае, если стабильно и прогнозируемо зарабатываете вы.
+                </p> </div> <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 grow"> <div class="reveal glass-panel p-6 rounded-2xl border border-white/10 hover:border-[#e11d48]/20 transition-all duration-300 flex flex-col justify-between"> <div class="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center border border-white/10 mb-4 text-[#e11d48]"> <i data-lucide="shield-check" style="width:20px;height:20px"></i> </div> <div> <h4 class="text-white font-bold text-base mb-1">Полный аудит процессов</h4> <p class="text-gray-300 text-sm leading-normal">Не запускаем слепой трафик. Исследуем воронку, анализируем ваших прямых конкурентов и находим утечки бюджетов еще до старта.</p> </div> </div> <div class="reveal glass-panel p-6 rounded-2xl border border-white/10 hover:border-[#e11d48]/20 transition-all duration-300 flex flex-col justify-between"> <div class="w-10 h-10 rounded-xl bg-[#e11d48]/10 flex items-center justify-center border border-[#e11d48]/20 mb-4 text-[#e11d48]"> <i data-lucide="heart-handshake" style="width:20px;height:20px"></i> </div> <div> <h4 class="text-white font-bold text-base mb-1">Культура win-win договора</h4> <p class="text-gray-300 text-sm leading-normal">Фиксируем четкие финансовые KPI в юридическом соглашении. Четко распределяем ответственность и контролируем ключевые метрики.</p> </div> </div> </div> </div> </div> </div> </section> <!-- ===================== SERVICES ===================== --> <section id="services" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10"> <div class="absolute top-1/2 left-1/4 -translate-y-1/2 w-[500px] h-[500px] bg-[#e11d48]/[0.02] rounded-full filter blur-[150px] pointer-events-none"></div> <div class="absolute top-1/4 right-0 w-[300px] h-[300px] bg-white/[0.01] rounded-full filter blur-[100px] pointer-events-none"></div> <div class="max-w-7xl mx-auto px-6 relative z-10"> <div class="mb-20 text-center lg:text-left"> <p class="reveal text-[#e11d48] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Отраслевая экспертиза</p> <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1]">
+              Инструменты, которые <span class="text-gradient-neon">работают на вас.</span> </h2> <p class="reveal text-gray-400 mt-4 text-base md:text-lg max-w-2xl font-normal">
+              Каждую услугу мы выстраиваем вокруг метрики ROMI. Никаких пустых отчётов — только чистый коммерческий результат и системные продажи.
+            </p> </div> <div id="services-grid" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div> </div> </section> <!-- ===================== CASES ===================== --> <section id="cases" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10"> <div class="absolute top-0 right-1/4 w-[450px] h-[450px] bg-white/[0.01] rounded-full filter blur-[110px] pointer-events-none"></div> <div class="absolute bottom-0 left-10 w-[350px] h-[350px] bg-[#e11d48]/[0.02] rounded-full filter blur-[120px] pointer-events-none"></div> <div class="max-w-7xl mx-auto px-6 relative z-10"> <div class="mb-16"> <p class="reveal text-[#e11d48] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Доказанный результат</p> <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1] max-w-4xl">
+              Цифры говорят <span class="text-gradient-neon">громче слов.</span> </h2> <p class="reveal text-gray-400 mt-4 text-base md:text-lg max-w-2xl font-normal">
+              Ниже — реальные бизнес-метрики из наших кейсов во время инфляции рекламных ставок в 2026 году. Кликните на любую карточку, чтобы изучить шаги реализации.
+            </p> </div> <div id="cases-stack" class="space-y-6"></div> </div> </section> <!-- ===================== LEAD FORM ===================== --> <section id="audit-form" class="py-24 relative overflow-hidden bg-transparent border-t border-white/10" aria-label="Бесплатный экспресс аудит"> <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#e11d48]/[0.02] rounded-full filter blur-[150px] pointer-events-none"></div> <div class="max-w-4xl mx-auto px-6 relative z-10"> <div class="text-center mb-16"> <p class="reveal text-[#e11d48] text-xs font-semibold tracking-widest uppercase mb-3 font-mono">// Диалоговая конверсия</p> <h2 class="reveal text-3xl md:text-5xl font-black text-white tracking-tight uppercase leading-[1.1]">
+              Узнайте точки <span class="text-gradient-neon">роста вашего бизнеса.</span> </h2> <p class="text-gray-400 mt-4 text-sm sm:text-base max-w-xl mx-auto font-normal leading-relaxed">
+              Оставьте заявку — основатель агентства Артур Хамеев лично свяжется с вами, разберёт вашу нишу и предложит план продвижения.
+            </p> </div> <div class="glass-panel-heavy rounded-3xl border border-white/10 p-8 sm:p-14 relative overflow-hidden shadow-2xl flex flex-col items-center text-center gap-8"> <div class="w-16 h-16 rounded-2xl bg-[#e11d48]/10 text-[#e11d48] border border-[#e11d48]/20 flex items-center justify-center"> <i data-lucide="sparkles" style="width:30px;height:30px"></i> </div> <div class="space-y-3 max-w-xl"> <h3 class="text-white font-black text-2xl sm:text-3xl uppercase tracking-tight">Бесплатный экспресс-аудит вашего маркетинга</h3> <p class="text-gray-400 text-sm sm:text-base font-normal leading-relaxed">Оставьте заявку — разберём вашу нишу, найдём точки роста и предложим план продвижения. Это ни к чему вас не обязывает.</p> </div> <!-- Кнопка открывает попап-форму Tilda (popup ID: audit) --> <a href="#audit" class="inline-flex items-center justify-center gap-2 px-10 py-4 rounded-xl bg-[#e11d48] hover:bg-[#e11d48]/90 text-white font-mono text-sm font-bold uppercase tracking-wider shadow-[0_0_25px_rgba(225,29,72,0.4)] transition hover:scale-[1.02]"> <i data-lucide="send" style="width:16px;height:16px"></i> Получить аудит бесплатно
+            </a> <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-mono text-gray-500"> <span>или свяжитесь сами:</span> <a href="tel:+79178636603" class="flex items-center gap-1.5 text-white hover:text-[#e11d48] transition"><i data-lucide="phone" style="width:13px;height:13px"></i> +7 (917) 863-66-03</a> </div> <p class="text-[10px] text-gray-600 max-w-md leading-normal">Перед отправкой заявки ознакомьтесь с <a href="https://onairagency.ru/privacy" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-[#e11d48] underline">Политикой обработки персональных данных</a>.</p> </div> </div> </section> <!-- ===================== FOOTER ===================== --> <section id="faq" class="oa-faq"> <canvas class="oa-faq__stars" aria-hidden="true"></canvas> <style>
+.oa-faq{position:relative;overflow:hidden;background:#000;color:#fff;padding:110px 24px}
+.oa-faq__stars{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.8}
+.oa-faq__in{position:relative;z-index:1;max-width:1120px;margin:auto}
+.oa-faq__tag{font:700 14px/1.2 "JetBrains Mono",monospace;letter-spacing:.16em;text-transform:uppercase;color:#e4003b;margin-bottom:24px}
+.oa-faq h2{font:900 clamp(38px,5vw,72px)/.95 Arial,sans-serif;letter-spacing:-.045em;text-transform:uppercase;margin:0 0 58px;max-width:850px}
+.oa-faq__grid{display:grid;grid-template-columns:1fr 1fr;gap:0 54px;border-top:1px solid #292929}
+.oa-faq details{border-bottom:1px solid #292929}
+.oa-faq summary{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:25px 0;cursor:pointer;list-style:none;font:700 15px/1.45 "JetBrains Mono",monospace;text-transform:uppercase;letter-spacing:.025em}
+.oa-faq summary::-webkit-details-marker{display:none}.oa-faq summary span{color:#e4003b;font-size:25px;font-weight:400;transition:.25s}
+.oa-faq details[open] summary span{transform:rotate(45deg)}
+.oa-faq p{margin:0;padding:0 45px 25px 0;color:#9b9b9b;font:400 16px/1.65 Arial,sans-serif}
+@media(max-width:760px){.oa-faq{padding:76px 20px}.oa-faq h2{margin-bottom:38px}.oa-faq__grid{grid-template-columns:1fr}.oa-faq summary{font-size:13px;padding:21px 0}.oa-faq p{font-size:15px}}
+</style> <div class="oa-faq__in"> <div class="oa-faq__tag">// Частые вопросы</div> <h2>Что важно знать<br>до старта</h2> <div class="oa-faq__grid"> <div> <details><summary>Какие услуги оказывает OnAir?<span>+</span></summary><p>Выстраиваем комплексный маркетинг: стратегию, Яндекс Директ, рекламу во ВКонтакте, SMM, сквозную аналитику, CRM-интеграции, упаковку и AI-инструменты.</p></details> <details><summary>С какими нишами работает агентство?<span>+</span></summary><p>Есть опыт в медицине, стоматологии, франчайзинге, услугах и B2B. До старта оцениваем экономику проекта, спрос и конкурентов.</p></details> <details><summary>Сколько стоит продвижение?<span>+</span></summary><p>Стоимость зависит от задач, рекламного бюджета и состава команды. После экспресс-аудита предложим понятный план и состав работ.</p></details> </div> <div> <details><summary>Как проходит бесплатный аудит?<span>+</span></summary><p>Разбираем воронку, рекламные каналы и точки потери денег. На выходе — приоритетные точки роста и следующие действия.</p></details> <details><summary>Как фиксируются KPI?<span>+</span></summary><p>До запуска согласовываем измеримые показатели, зоны ответственности и отчётность. Ключевые условия закрепляем в договоре.</p></details> <details><summary>Работаете по всей России?<span>+</span></summary><p>Да. Команда находится в Казани и работает с компаниями по всей России дистанционно.</p></details> </div> </div> </div> <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Какие услуги оказывает OnAir?","acceptedAnswer":{"@type":"Answer","text":"OnAir выстраивает комплексный маркетинг: стратегию, Яндекс Директ, рекламу во ВКонтакте, SMM, аналитику, CRM-интеграции, упаковку и AI-инструменты."}},{"@type":"Question","name":"С какими нишами работает агентство?","acceptedAnswer":{"@type":"Answer","text":"У агентства есть опыт в медицине, стоматологии, франчайзинге, услугах и B2B."}},{"@type":"Question","name":"Сколько стоит продвижение?","acceptedAnswer":{"@type":"Answer","text":"Стоимость зависит от задач, рекламного бюджета и состава команды."}},{"@type":"Question","name":"Как проходит бесплатный аудит?","acceptedAnswer":{"@type":"Answer","text":"Разбираются воронка, рекламные каналы и точки потери денег."}},{"@type":"Question","name":"Как фиксируются KPI?","acceptedAnswer":{"@type":"Answer","text":"До запуска согласовываются измеримые показатели, зоны ответственности и отчётность."}},{"@type":"Question","name":"Работаете по всей России?","acceptedAnswer":{"@type":"Answer","text":"Да. Команда находится в Казани и работает с компаниями по всей России дистанционно."}}]}</script> </section> <script>
+(()=>{const s=document.getElementById("faq"),c=s&&s.querySelector(".oa-faq__stars");if(!c)return;const x=c.getContext("2d");let w,h,p=[];function resize(){const d=Math.min(devicePixelRatio||1,2);w=s.clientWidth;h=s.clientHeight;c.width=w*d;c.height=h*d;c.style.width=w+"px";c.style.height=h+"px";x.setTransform(d,0,0,d,0,0);p=Array.from({length:Math.max(28,Math.floor(w/42))},()=>({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.16,vy:(Math.random()-.5)*.16,r:Math.random()*1.8+.7}));}function draw(){x.clearRect(0,0,w,h);for(let i=0;i<p.length;i++){const a=p[i];a.x+=a.vx;a.y+=a.vy;if(a.x<0||a.x>w)a.vx*=-1;if(a.y<0||a.y>h)a.vy*=-1;for(let j=i+1;j<p.length;j++){const b=p[j],dx=a.x-b.x,dy=a.y-b.y,d=Math.hypot(dx,dy);if(d<125){x.strokeStyle="rgba(225,0,60,"+((1-d/125)*.12)+")";x.lineWidth=.6;x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke();}}x.shadowBlur=12;x.shadowColor="#e1003c";x.fillStyle="rgba(225,0,60,.85)";x.beginPath();x.arc(a.x,a.y,a.r,0,Math.PI*2);x.fill();x.shadowBlur=0;}requestAnimationFrame(draw);}resize();draw();addEventListener("resize",resize,{passive:true});})();
+</script> <footer class="bg-transparent border-t border-white/10 py-16 text-gray-400 text-xs relative overflow-hidden"> <div class="absolute bottom-0 left-0 w-96 h-96 bg-[#e11d48]/[0.02] rounded-full filter blur-[100px] pointer-events-none"></div> <div class="max-w-7xl mx-auto px-6 relative z-10"> <div class="grid grid-cols-1 md:grid-cols-12 gap-12 sm:gap-8 items-start justify-between"> <div class="md:col-span-4 space-y-4 text-left"> <button onclick="window.scrollTo({top:0,behavior:'smooth'})" class="flex items-center gap-2 font-display text-lg font-black tracking-tighter text-white uppercase select-none"> <span class="w-2.5 h-2.5 bg-[#e11d48] rounded-full animate-pulse"></span> <img src="https://lh3.googleusercontent.com/d/1GOx57BVjuKWpH7kF9S_NzlVETO4mRWZ0" alt="OnAir" referrerpolicy="no-referrer" class="h-6 w-auto object-contain brightness-110" onerror="this.style.display='none';document.getElementById('logo-footer-fallback').style.display='inline'"> <span id="logo-footer-fallback" style="display:none">OnAir</span> </button> <p class="text-gray-500 font-mono text-[10px] leading-relaxed">
+                ИП ХАМЕЕВ АРТУР РУСТЕМОВИЧ <br />
+                ИНН 164704917634 <br />
+                ОГРНИП 320169000068052 <br />
+                Копирайт © <span id="year"></span> OnAir. Все права защищены.
+              </p> </div> <div class="md:col-span-4 space-y-2 text-left md:text-center mt-2"> <h4 class="text-white font-mono font-bold uppercase tracking-wider mb-3">Информация</h4> <ul class="space-y-2 text-gray-500 font-mono text-[10px] uppercase"> <li><a href="https://onairagency.ru/privacy" target="_blank" rel="noopener noreferrer" class="hover:text-white transition">Политика конфиденциальности</a></li> <li><a href="/consent" class="hover:text-white transition">Пользовательское соглашение</a></li> </ul> </div> <div class="md:col-span-4 space-y-4 text-left md:text-right"> <h4 class="text-white font-mono font-bold uppercase tracking-wider mb-2 md:text-right">Контакты</h4> <div class="space-y-2 font-mono"> <div> <a href="tel:+79178636603" class="block text-[#e11d48] font-bold text-sm tracking-wide hover:underline leading-none">+7 (917) 863-66-03</a> <span class="text-[10px] text-gray-600">Звонок бесплатный по РФ</span> </div> <div><a href="mailto:hameevartur@mail.ru" class="text-gray-300 hover:text-white transition text-xs">hameevartur@mail.ru</a></div> </div> </div> </div> </div> </footer> </div> <!-- Форма заявки размещается отдельным штатным popup-блоком Tilda BF501/BF502/BF503 с linkhook #audit. --> <!-- В блоке формы подключается только приемщик Email; Telegram и WhatsApp не используются. --> <!-- ===================== SCRIPTS ===================== --> <script>
+/* ===================== ДАННЫЕ САЙТА ===================== */
+/* Услуги и кейсы вынесены сюда — правьте текст здесь, без вмешательства в логику. */
+
+const SERVICES_DATA = [
+  { id:"analytics", title:"Сквозная аналитика и ИИ", tagline:"Оцифровываем каждый рекламный рубль", description:"Настраиваем прозрачную воронку от клика до повторной покупки. Интегрируем нейросети для автоматического скоринга лидов и контроля качества коммуникаций.", details:["Внедрение сквозной аналитики Roistat / CoMagic","Обучение ИИ-моделей для оценки звонков («НейроРОП»)","Интеграция CRM-систем (amoCRM / Bitrix24)","Индивидуальные дашборды в PowerBI / Looker Studio"], iconName:"brain" },
+  { id:"performance", title:"Performance-маркетинг", tagline:"Трафик с жесткой привязкой к CPL и ROI", description:"Разрабатываем и запускаем контекстную и таргетированную рекламу. Оптимизируем связки на основе сквозных данных, непрерывно снижая стоимость привлечения.", details:["Яндекс.Директ (Поиск, РСЯ, Мастер Кампаний)","Реклама ВКонтакте и MyTarget","Ретаргетинг по когортным группам","A/B-тестирование креативов и посадочных страниц"], iconName:"trending-up" },
+  { id:"smm-influencer", title:"SMM и Influencer-маркетинг", tagline:"Прогрев аудитории и вирусные форматы", description:"Выстраиваем искреннюю коммуникацию с вашими клиентами. Профессионально работаем с лидерами мнений и создаем вирусный видеоконтент.", details:["Создание сценариев и съемка Reels / Shorts / VK Клипов","Посевы в целевых Telegram-каналах","Интеграция у блогеров на Win-Win условиях","Разработка контент-стратегии и ведение брендовых аккаунтов"], iconName:"instagram" },
+  { id:"strategy-creative", title:"Стратегия и Креатив", tagline:"Упаковка, масштабирование и сильный бренд", description:"Определяем долгосрочный вектор развития. Создаем сильное B2B-позиционирование, упаковываем продукт и подготавливаем франшизы к масштабированию.", details:["Конкурентный анализ и отстройка от рынка","Упаковка франшиз под ключ (презентации, лендинги, регламенты)","Разработка бренд-буков и креативных концепций","Консалтинг и аудит внутренних отделов маркетинга"], iconName:"compass" }
+];
+
+const CASES_DATA = [
+  { id:"am-medica", client:"АМ Медика", shortBrief:"Многопрофильный медицинский центр", metricValue:"+333%", metricLabel:"Рост выручки", metricContext:"Увеличение целевых лидов на 285%", description:"Глубокая оптимизация performance-каналов и внедрение интеллектуальной сквозной аналитики. Отрезали неэффективные ключевые слова и внедрили ИИ-оценку качества лидов менеджерами продаж, что удержало ДРР на запланированной отметке.", strategyPoints:["Полный редизайн семантических ядер в Яндекс Директе","Внедрение скриптов автоматической фильтрации спам-заявок","Оцифровка конверсии в сделку по каждому врачу"], results:["Лидогенерация выросла на 285% без увеличения расходов","Стабильный рост продаж по направлениям МРТ и УЗИ","Доля рекламных расходов (ДРР) снизилась на 12%"], tags:["Медицина","ИИ-Контроль","Сквозная аналитика","Яндекс.Директ"] },
+  { id:"scandinavia", client:"Скандинавия", shortBrief:"Клиника эстетической медицины", metricValue:"+981%", metricLabel:"Рост охватов", metricContext:"Полная запись на пластическую хирургию", description:"Организовали системный трафик в направлении пластической хирургии. Использовали синергию вирусного SMM (Reels-кейсы реальных пациентов) с точечным ретаргетингом в соцсетях.", strategyPoints:["Создание контент-студии внутри клиники для съема контента «До/После»","Запуск инфлюенс-интеграций у региональных лидеров мнений","Разработка квизов с сильным оффером на первичную консультацию"], results:["Охваты в социальных сетях увеличены на 981%","Запись к ведущим пластическим хирургам закрыта на 3 месяца вперед","Получено более 4,500 живых обращений с соцсетей"], tags:["SMM","Пластическая хирургия","Influencers","Креатив"] },
+  { id:"stomus", client:"Стомус", shortBrief:"Сеть стоматологических клиник", metricValue:"+52%", metricLabel:"Рост оборота за год", metricContext:"CPL на уровне 900₽", description:"Системное масштабирование рекламных бюджетов с жестким контролем стоимости лида. Настроили распределенную маршрутизацию обращений в зависимости от филиала и загрузки врачей.", strategyPoints:["Запуск контекстной рекламы с оплатой за целевые звонки","Интеграция Яндекс.Карт и 2ГИС для привлечения локального трафика","Разработка автоворонок в мессенджерах для удержания повторных визитов"], results:["Выручка сети выросла на 52% в годовом исчислении","Стабильный CPL качественного обращения удержан в пределах 900₽","Загрузка кабинетов имплантации и ортодонтии достигла 92%"], tags:["Стоматология","Локальный маркетинг","CPL 900₽","Контекст"] },
+  { id:"airmed-zabota", client:"Аирмед и Забота", shortBrief:"Медицинский патронаж и реабилитация", metricValue:"2x", metricLabel:"Сокращение бюджета", metricContext:"При росте выручки на +71%", description:"Применили собственную технологию «НейроРОП» для аудита разговоров менеджеров. Выявили системные ошибки в закрытии теплых заявок и перенаправили освобожденный бюджет с мусорных каналов на конвертирующие связки.", strategyPoints:["ИИ-расшифровка и анализ 100% входящих звонков","Доработка скриптов обработки возражений","Отключение неэффективных медийных площадок с высоким CPA"], results:["Рекламные затраты сокращены в 2 раза за 45 дней","Выручка компании увеличилась на 71% за счет роста конверсии продаж","Контроль качества отдела продаж переведен на 100% автопилот"], tags:["НейроРОП","Оптимизация бюджета","CRM","Конверсия"] },
+  { id:"hasuna", client:"Клиника Хасуна", shortBrief:"Стартап в сфере челюстно-лицевой хирургии", metricValue:"0 ➔ 15", metricLabel:"Консультаций ежедневно", metricContext:"Запуск клиники с нуля", description:"Разработали маркетинговую стратегию запуска еще на этапе ремонта помещений. К моменту получения лицензии была сформирована база теплых лидов и выстроены воронки прогрева.", strategyPoints:["Сайт-визитка с интерактивной 3D-экскурсией и анкетированием","Прогревом целевой аудитории через экспертные статьи и лонгриды","Таргетированная реклама на сегмент премиум-аудитории"], results:["Загрузка ведущего хирурга составила 10-15 консультаций с первого дня открытия","Стоимость бронирования консультации в 1.8 раза ниже рыночной","Полная окупаемость вложений в маркетинг на 3-й месяц работы"], tags:["Быстрый старт","Премиум-сегмент","Автоворонка"] },
+  { id:"zhar-svezhar", client:"Жар-Свежар (B2B)", shortBrief:"Федеральная франчайзинговая сеть пекарен", metricValue:"2300₽", metricLabel:"Стоимость лида (CPL)", metricContext:"Синергия Директа, ВК и Авито", description:"Выстроили стабильный поток качественных заявок на покупку франшизы пекарни. Объединили классические поисковые форматы с продвижением лотов готового бизнеса на досках объявлений.", strategyPoints:["Разработка высококонверсионного лендинга франшизы с калькулятором прибыли","Создание сквозной связки Яндекс.Директ ➔ ВК ➔ Авито B2B","Квалификация лидов чат-ботом перед передачей брокерам"], results:["Поток целевых заявок на франшизу вырос в 4 раза","CPL удержан на уровне 2300₽ (лучший показатель в сегменте общепита)","Открыто 18 новых партнерских точек за 6 месяцев"], tags:["B2B маркетинг","Франчайзинг","Авито","Квиз-лендинг"] }
+];
+</script> <script>
+/* ===================== ЛОГИКА ПРИЛОЖЕНИЯ ===================== */
+/* Зависит от SERVICES_DATA и CASES_DATA (js/data.js) и библиотек Tailwind + Lucide. */
+
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* ---- Render services ---- */
+(function renderServices(){
+  const grid = document.getElementById('services-grid');
+  grid.innerHTML = SERVICES_DATA.map((s, i) => `
+    <article class="reveal group relative rounded-3xl overflow-hidden glass-panel border border-white/10 hover:border-[#e11d48]/50 hover:shadow-[0_20px_50px_rgba(225,29,72,0.06)] p-8 sm:p-10 transition-all duration-500 flex flex-col justify-between"> <div class="absolute -inset-px bg-gradient-to-br from-[#e11d48]/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div> <div> <div class="flex items-center justify-between mb-8"> <div class="w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/10 flex items-center justify-center p-3 text-[#e11d48] group-hover:bg-[#e11d48] group-hover:text-white group-hover:border-[#e11d48] group-hover:shadow-[0_0_20px_rgba(225,29,72,0.4)] transition-all duration-500">
+            ${s.iconName === 'instagram'
+              ? '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>'
+              : '<i data-lucide="'+s.iconName+'" style="width:28px;height:28px;stroke-width:1.5"></i>'}
+          </div> <span class="text-[10px] font-mono text-white/20 tracking-wider group-hover:text-[#e11d48]/50 transition-colors duration-500 font-bold">[0${i+1}]</span> </div> <h3 class="text-xl sm:text-2xl font-black text-white tracking-tight uppercase">${esc(s.title)}</h3> <p class="text-[#e11d48] text-xs font-mono font-medium tracking-wide mt-2 mb-4">${esc(s.tagline)}</p> <p class="text-white/80 text-sm leading-relaxed mb-8">${esc(s.description)}</p> </div> <div class="border-t border-white/10 pt-6 mt-auto"> <h4 class="text-xs font-mono font-bold uppercase tracking-wider mb-4 text-white/50 group-hover:text-[#e11d48] transition-colors duration-500">Примеры задач в OnAir:</h4> <ul class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4">
+          ${s.details.map(d => `<li class="flex items-start gap-2 text-sm text-gray-200 leading-snug"><i data-lucide="circle-check" class="text-[#e11d48] shrink-0 mt-0.5" style="width:14px;height:14px"></i><span>${esc(d)}</span></li>`).join('')}
+        </ul> </div> </article>`).join('');
+})();
+
+/* ---- Render cases (accordion) ---- */
+(function renderCases(){
+  const stack = document.getElementById('cases-stack');
+  stack.innerHTML = CASES_DATA.map((p, idx) => `
+    <article data-case="${p.id}" class="reveal case-card group rounded-3xl border transition-all duration-500 overflow-hidden glass-panel border-white/10 hover:border-white/20 hover:bg-white/[0.02]"> <div class="case-header p-8 sm:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8 cursor-pointer relative select-none" role="button"> <div class="space-y-4 max-w-xl"> <div class="flex flex-wrap gap-2">
+            ${p.tags.map(t => `<span class="case-tag text-[9px] font-mono tracking-widest uppercase px-2.5 py-1 rounded-full border bg-white/[0.02] text-gray-400 border-white/10 font-semibold">${esc(t)}</span>`).join('')}
+          </div> <div> <h3 class="text-2xl sm:text-3xl font-black text-white tracking-tight leading-none group-hover:text-gradient-neon transition-all duration-300">${esc(p.client)}</h3> <p class="text-[#e11d48] text-xs font-mono tracking-wider mt-1.5 uppercase font-medium">${esc(p.shortBrief)}</p> </div> <p class="text-gray-300 text-sm leading-relaxed font-normal">${esc(p.description)}</p> </div> <div class="flex items-center gap-6 shrink-0 lg:text-right"> <div class="space-y-1"> <div class="text-4xl sm:text-6xl font-black font-display tracking-tight text-gradient-neon flex items-baseline">${esc(p.metricValue)}</div> <div class="text-white text-xs font-mono font-bold uppercase tracking-wider">${esc(p.metricLabel)}</div> <div class="text-gray-400 text-[10px] font-mono leading-none">${esc(p.metricContext)}</div> </div> <div class="case-chevron w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shrink-0 bg-white/[0.03] text-gray-400 border border-white/10 group-hover:bg-white/10 group-hover:text-white"> <i data-lucide="chevron-down" style="width:20px;height:20px"></i> </div> </div> </div> <div class="case-drawer" style="display:none"> <div class="border-t border-white/10 bg-black/[0.15] px-8 py-8 sm:px-10 sm:py-10 grid grid-cols-1 md:grid-cols-2 gap-8"> <div class="space-y-4"> <h4 class="text-sm font-mono font-bold tracking-widest text-[#e11d48] uppercase flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-[#e11d48]"></span>// Шаги реализации (Стратегия)</h4> <div class="space-y-3">
+              ${p.strategyPoints.map((pt, i) => `<div class="flex gap-3 items-start"><div class="w-5 h-5 rounded bg-white/[0.02] border border-white/10 flex items-center justify-center shrink-0 mt-0.5 text-gray-400 text-[10px] font-mono font-bold">0${i+1}</div><p class="text-gray-300 text-sm font-normal leading-normal">${esc(pt)}</p></div>`).join('')}
+            </div> </div> <div class="space-y-4"> <h4 class="text-sm font-mono font-bold tracking-widest text-white uppercase flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-white"></span>// Коммерческие итоги</h4> <div class="space-y-3">
+              ${p.results.map(r => `<div class="flex gap-3 items-start"><div class="w-5 h-5 rounded bg-[#e11d48]/10 text-[#e11d48] flex items-center justify-center shrink-0 mt-0.5"><i data-lucide="check" style="width:12px;height:12px;stroke-width:2.5"></i></div><p class="text-gray-200 text-sm font-normal leading-normal">${esc(r)}</p></div>`).join('')}
+            </div> </div> </div> </div> </article>`).join('');
+
+  const cards = stack.querySelectorAll('.case-card');
+  function setOpen(card, open){
+    const drawer = card.querySelector('.case-drawer');
+    const chevron = card.querySelector('.case-chevron');
+    const tags = card.querySelectorAll('.case-tag');
+    drawer.style.display = open ? 'block' : 'none';
+    card.classList.toggle('glass-panel-neon', open);
+    card.classList.toggle('ring-1', open);
+    card.classList.toggle('ring-[#e11d48]/30', open);
+    card.classList.toggle('shadow-[0_30px_60px_rgba(225,29,72,0.08)]', open);
+    card.classList.toggle('glass-panel', !open);
+    card.classList.toggle('border-white/10', !open);
+    chevron.classList.toggle('bg-[#e11d48]', open);
+    chevron.classList.toggle('text-white', open);
+    chevron.classList.toggle('shadow-[0_0_15px_rgba(225,29,72,0.5)]', open);
+    chevron.classList.toggle('bg-white/[0.03]', !open);
+    chevron.classList.toggle('text-gray-400', !open);
+    chevron.classList.toggle('border', !open);
+    chevron.classList.toggle('border-white/10', !open);
+    // rotate the chevron via CSS (icon stays a chevron-down, flips 180° when open)
+    chevron.style.transition = 'transform 0.4s ease';
+    chevron.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+    tags.forEach(t => {
+      t.classList.toggle('bg-[#e11d48]/10', open);
+      t.classList.toggle('text-[#e11d48]', open);
+      t.classList.toggle('border-[#e11d48]/20', open);
+      t.classList.toggle('bg-white/[0.02]', !open);
+      t.classList.toggle('text-gray-400', !open);
+      t.classList.toggle('border-white/10', !open);
+    });
+  }
+  cards.forEach(card => {
+    card.querySelector('.case-header').addEventListener('click', () => {
+      const isOpen = card.querySelector('.case-drawer').style.display === 'block';
+      cards.forEach(c => { if (c !== card) setOpen(c, false); });
+      setOpen(card, !isOpen);
+    });
+  });
+  // open first by default
+  setOpen(cards[0], true);
+})();
+
+/* ---- Navigation, header, mobile menu ---- */
+(function nav(){
+  const header = document.getElementById('main-header');
+  const drawer = document.getElementById('mobile-navigation-drawer');
+  const toggle = document.getElementById('mobile-menu-toggle-btn');
+  const menuIcon = document.getElementById('menu-icon');
+  let open = false;
+
+  function setHeader(){
+    const scrolled = window.scrollY > 40;
+    header.className = 'fixed top-0 left-0 w-full z-100 transition-all duration-500 border-b ' + (scrolled
+      ? 'bg-white/5 backdrop-blur-xl py-4 border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.8)]'
+      : 'bg-transparent py-5 border-transparent');
+  }
+  window.addEventListener('scroll', setHeader); setHeader();
+
+  toggle.addEventListener('click', () => {
+    open = !open;
+    drawer.classList.toggle('hidden', !open);
+    drawer.classList.toggle('flex', open);
+    menuIcon.setAttribute('data-lucide', open ? 'x' : 'menu');
+    lucide.createIcons();
+  });
+
+  function scrollToSection(id){
+    open = false; drawer.classList.add('hidden'); drawer.classList.remove('flex');
+    menuIcon.setAttribute('data-lucide','menu'); lucide.createIcons();
+    const el = document.getElementById(id);
+    if (el){
+      const top = el.getBoundingClientRect().top + window.pageYOffset - 80;
+      window.scrollTo({ top, behavior:'smooth' });
+    }
+  }
+  document.querySelectorAll('[data-scroll]').forEach(b => b.addEventListener('click', () => scrollToSection(b.dataset.scroll)));
+})();
+
+/* ---- Reveal on scroll ---- */
+(function reveal(){
+  const els = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.08, rootMargin: '0px 0px -8% 0px' });
+  els.forEach(el => io.observe(el));
+})();
+
+/* ---- Custom cursor ---- */
+(function cursor(){
+  const c = document.getElementById('custom-cursor');
+  if (!c) return;
+  document.addEventListener('mousemove', e => { c.style.left = e.clientX+'px'; c.style.top = e.clientY+'px'; });
+  document.addEventListener('mousedown', () => { c.style.transform='translate(-50%,-50%) scale(0.7)'; c.style.backgroundColor='rgba(225,29,72,0.3)'; });
+  document.addEventListener('mouseup', () => { c.style.transform='translate(-50%,-50%) scale(1)'; c.style.backgroundColor='transparent'; });
+  const sel = 'a, button, select, input, [role="button"]';
+  document.addEventListener('mouseover', e => { if (e.target.closest(sel)){ c.style.width='50px'; c.style.height='50px'; c.style.boxShadow='0 0 15px rgba(225,29,72,0.6)'; } });
+  document.addEventListener('mouseout', e => { if (e.target.closest(sel)){ c.style.width='32px'; c.style.height='32px'; c.style.boxShadow='none'; } });
+})();
+
+/* ---- Animated network background (canvas) — connected constellation web ---- */
+(function network(){
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, dpr, COUNT;
+  let parts = [];
+  const mouse = { x:0, y:0, tx:0, ty:0 };
+
+  function build(){
+    parts = [];
+    // density tied to screen area -> even, connected coverage on any size
+    COUNT = Math.round(Math.min(120, Math.max(60, (W*H)/13500)));
+    for (let i=0;i<COUNT;i++){
+      const ang = Math.random()*Math.PI*2;
+      const sp = 4 + Math.random()*7;          // slow drift speed (px/sec)
+      parts.push({
+        x: Math.random()*W,
+        y: Math.random()*H,
+        vx: Math.cos(ang)*sp,
+        vy: Math.sin(ang)*sp,
+        size: 0.6 + Math.random()*1.9,          // varied sizes
+        bright: 0.55 + Math.random()*0.45,
+        tw: Math.random()*Math.PI*2             // twinkle phase
+      });
+    }
+  }
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    build();
+  }
+  window.addEventListener('resize', resize); resize();
+  window.addEventListener('mousemove', e => { mouse.tx = (e.clientX/W*2-1); mouse.ty = (e.clientY/H*2-1); });
+
+  const THRESH = 150;                            // connection radius
+  const MARGIN = 40;
+  let last = performance.now();
+  function frame(now){
+    const dt = Math.min(0.05, (now - last)/1000); last = now;
+    const t = now/1000;
+    mouse.x += (mouse.tx - mouse.x)*0.04;
+    mouse.y += (mouse.ty - mouse.y)*0.04;
+    const px = mouse.x*30, py = mouse.y*22;       // gentle parallax (render only)
+
+    // move + wrap at edges -> continuous even field
+    for (const p of parts){
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      if (p.x < -MARGIN) p.x = W+MARGIN; else if (p.x > W+MARGIN) p.x = -MARGIN;
+      if (p.y < -MARGIN) p.y = H+MARGIN; else if (p.y > H+MARGIN) p.y = -MARGIN;
+      p.rx = p.x + px; p.ry = p.y + py;
+    }
+
+    ctx.clearRect(0,0,W,H);
+    ctx.globalCompositeOperation = 'lighter';     // additive neon glow
+
+    // connect ALL nearby pairs -> a real web
+    ctx.lineWidth = 1;
+    for (let i=0;i<COUNT;i++){
+      const a = parts[i];
+      for (let j=i+1;j<COUNT;j++){
+        const b = parts[j];
+        const dx = a.rx-b.rx, dy = a.ry-b.ry;
+        const d2 = dx*dx + dy*dy;
+        if (d2 < THRESH*THRESH){
+          const d = Math.sqrt(d2);
+          const al = (1 - d/THRESH) * 0.22;
+          ctx.strokeStyle = 'rgba(225,29,72,'+al.toFixed(3)+')';
+          ctx.beginPath(); ctx.moveTo(a.rx,a.ry); ctx.lineTo(b.rx,b.ry); ctx.stroke();
+        }
+      }
+    }
+    // glowing dots: bright core + soft halo, varied sizes & subtle twinkle
+    for (const p of parts){
+      const tw = 0.7 + 0.3*Math.sin(t*0.8 + p.tw);
+      const rc = p.size * 1.5 + 0.5;              // core radius
+      const halo = rc * 3.2;
+      const core = p.bright * tw;
+      const g = ctx.createRadialGradient(p.rx,p.ry,0,p.rx,p.ry,halo);
+      g.addColorStop(0,    'rgba(251,113,133,'+core.toFixed(3)+')');
+      g.addColorStop(0.3,  'rgba(225,29,72,'+(core*0.5).toFixed(3)+')');
+      g.addColorStop(1,    'rgba(225,29,72,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(p.rx,p.ry,halo,0,Math.PI*2); ctx.fill();
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ---- Форма заявки обрабатывается штатным popup-блоком Tilda #audit. ---- */
+
+/* ---- Init icons ---- */
+lucide.createIcons();
+</script>
