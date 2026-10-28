@@ -556,7 +556,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     preloader:   true,  // заставка «ON AIR» при первом заходе (раз за сессию)
     smoothScroll:true,  // плавная инерционная прокрутка (только компьютер)
     cursor:      true,  // фирменный курсор с подписями (только компьютер)
-    stars:       true,  // интерактивное звёздное небо: тянется к мышке, шлейф из звёзд, волна по клику
+    stars:       true,  // интерактивное звёздное небо: всё поле реагирует на мышку (объём + звёзды расступаются)
     globe:       true,  // вращающаяся сфера из точек на первом экране (только компьютер)
     marquee:     true,  // бегущая строка с услугами под первым экраном
     stack:       true,  // карточки услуг наезжают друг на друга при прокрутке (только компьютер)
@@ -722,7 +722,9 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     cv.id = 'oa-stars'; cv.setAttribute('aria-hidden', 'true');
     if (old && old.parentNode) old.parentNode.insertBefore(cv, old.nextSibling); else body.insertBefore(cv, body.firstChild);
     var ctx = cv.getContext('2d');
-    var W = 0, H = 0, dpr = 1, nodes = [], sparks = [], waves = [];
+    var W = 0, H = 0, dpr = 1, nodes = [], waves = [];
+    var R = 230, TH = 145, M = 110;  // радиус реакции на мышку, длина связей, запас за краем экрана
+    var cam = { x: 0, y: 0 };           // «камера» — плавно следует за мышкой
 
     var sprite = (function () {
       var s = doc.createElement('canvas'); s.width = s.height = 64;
@@ -736,11 +738,11 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     })();
 
     function build() {
-      var n = Math.round(clamp(W * H / (FINE ? 12500 : 20000), 36, 130));
+      var n = Math.round(clamp((W + 2 * M) * (H + 2 * M) / (FINE ? 13500 : 21000), 40, 150));
       nodes = [];
       for (var i = 0; i < n; i++) {
         var z = 0.3 + Math.random() * 0.7, a = Math.random() * Math.PI * 2, sp = (3 + Math.random() * 8) * z;
-        nodes.push({ x: Math.random() * W, y: Math.random() * H, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        nodes.push({ x: -M + Math.random() * (W + 2 * M), y: -M + Math.random() * (H + 2 * M), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
           z: z, s: 0.5 + (0.6 + Math.random() * 1.6) * z, tw: Math.random() * 6.3, ox: 0, oy: 0, rx: 0, ry: 0, glow: 0 });
       }
     }
@@ -756,38 +758,18 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     }
     addEventListener('resize', resize); resize();
 
-    // шлейф из звёзд за мышкой
-    var lx = -1, ly = -1;
-    addEventListener('pointermove', function (e) {
-      if (e.pointerType !== 'mouse' || REDUCE) return;
-      if (lx < 0) { lx = e.clientX; ly = e.clientY; return; }
-      var dx = e.clientX - lx, dy = e.clientY - ly, dist = Math.sqrt(dx * dx + dy * dy);
-      var n = Math.min(4, Math.floor(dist / 14));
-      for (var i = 0; i < n && sparks.length < 160; i++) {
-        var t = (i + 1) / n;
-        sparks.push({ x: lx + dx * t, y: ly + dy * t, vx: (Math.random() - 0.5) * 40 - dx * 0.4, vy: (Math.random() - 0.5) * 40 - dy * 0.4 + 10,
-          life: 0, max: 0.6 + Math.random() * 0.8, s: 1.6 + Math.random() * 2.8, rot: Math.random() * 3 });
-      }
-      if (n) { lx = e.clientX; ly = e.clientY; }
-    }, { passive: true });
-    // волна по клику / тапу
+    // по клику / тапу по полю проходит волна
     addEventListener('pointerdown', function (e) {
       if (REDUCE || (e.target.closest && e.target.closest('.t-popup,.t972,input,textarea'))) return;
       waves.push({ x: e.clientX, y: e.clientY, r: 0, life: 0 });
       if (waves.length > 4) waves.shift();
     }, { passive: true });
 
-    function drawStar(x, y, r, rot) {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.beginPath();
-      for (var i = 0; i < 4; i++) {
-        ctx.lineTo(0, -r); ctx.rotate(Math.PI / 4); ctx.lineTo(0, -r * 0.28); ctx.rotate(Math.PI / 4);
-      }
-      ctx.closePath(); ctx.fill(); ctx.restore();
-    }
-
-    var R = 190, TH = 145, M = 40;
     function frame(dt, now) {
       var t = now / 1000, mx = ptr.x, my = ptr.y, mOn = ptr.active && FINE, sy = scroll.y;
+      // камера смещается вслед за мышкой — ближние звёзды уходят сильнее дальних, появляется объём
+      cam.x = lerp(cam.x, mOn ? mx / W * 2 - 1 : 0, 0.035);
+      cam.y = lerp(cam.y, mOn ? my / H * 2 - 1 : 0, 0.035);
       ctx.clearRect(0, 0, W, H);
       ctx.globalCompositeOperation = 'lighter';
       var i, j, p, q, dx, dy, d2, d;
@@ -802,17 +784,19 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
         if (p.y < -M) p.y = H + M; else if (p.y > H + M) p.y = -M;
         // глубина: при прокрутке дальние звёзды двигаются медленнее ближних
         var by = ((p.y - sy * 0.14 * p.z) % (H + 2 * M) + (H + 2 * M)) % (H + 2 * M) - M;
-        var bx = p.x, tx = 0, ty = 0, g = 0;
+        var bx = p.x - cam.x * 70 * p.z, tx = 0, ty = 0, g = 0;
+        by -= cam.y * 45 * p.z;
         if (mOn) {
-          dx = mx - bx; dy = my - by; d2 = dx * dx + dy * dy;
-          if (d2 < R * R) { d = Math.sqrt(d2); var f = 1 - d / R; tx = dx * f * 0.32 * p.z; ty = dy * f * 0.32 * p.z; g = f; }
+          // возле курсора звёзды мягко расступаются, как линза
+          dx = bx - mx; dy = by - my; d2 = dx * dx + dy * dy;
+          if (d2 < R * R) { d = Math.sqrt(d2) || 1; var f = 1 - d / R; f *= f; var push = f * 75 * (0.4 + 0.6 * p.z); tx = dx / d * push; ty = dy / d * push; g = f * 0.7; }
         }
         for (j = 0; j < waves.length; j++) {
           var w = waves[j]; dx = bx - w.x; dy = by - w.y; d = Math.sqrt(dx * dx + dy * dy) || 1;
           var band = 1 - Math.abs(d - w.r) / 90;
           if (band > 0) { var k = band * (1 - w.life / 1.1) * 60; tx += dx / d * k; ty += dy / d * k; g = Math.max(g, band); }
         }
-        p.ox = lerp(p.ox, tx, 0.09); p.oy = lerp(p.oy, ty, 0.09);
+        p.ox = lerp(p.ox, tx, 0.07); p.oy = lerp(p.oy, ty, 0.07);
         p.glow = lerp(p.glow, g, 0.1);
         p.rx = bx + p.ox; p.ry = by + p.oy;
       }
@@ -830,41 +814,13 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
           }
         }
       }
-      // нити от курсора к ближайшим звёздам
-      if (mOn) {
-        for (i = 0; i < nodes.length; i++) {
-          p = nodes[i]; dx = p.rx - mx; dy = p.ry - my; d2 = dx * dx + dy * dy;
-          if (d2 < R * R) {
-            ctx.strokeStyle = 'rgba(255,95,130,' + ((1 - Math.sqrt(d2) / R) * 0.55).toFixed(3) + ')';
-            ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(p.rx, p.ry); ctx.stroke();
-          }
-        }
-      }
       // сами звёзды
       for (i = 0; i < nodes.length; i++) {
         p = nodes[i];
         var tw = 0.65 + 0.35 * Math.sin(t * 0.9 + p.tw);
-        var h = p.s * (4.2 + p.glow * 4);
-        ctx.globalAlpha = clamp((0.45 + 0.55 * p.z) * tw + p.glow * 0.6, 0, 1);
+        var h = p.s * (4.2 + p.glow * 2.5);
+        ctx.globalAlpha = clamp((0.45 + 0.55 * p.z) * tw + p.glow * 0.4, 0, 1);
         ctx.drawImage(sprite, p.rx - h, p.ry - h, h * 2, h * 2);
-      }
-      ctx.globalAlpha = 1;
-      // волны
-      for (i = 0; i < waves.length; i++) {
-        var wv = waves[i];
-        ctx.strokeStyle = 'rgba(255,80,115,' + (0.45 * (1 - wv.life / 1.1)).toFixed(3) + ')';
-        ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(wv.x, wv.y, wv.r, 0, Math.PI * 2); ctx.stroke();
-      }
-      // шлейф
-      for (i = sparks.length - 1; i >= 0; i--) {
-        var s = sparks[i]; s.life += dt;
-        if (s.life >= s.max) { sparks.splice(i, 1); continue; }
-        s.x += s.vx * dt; s.y += s.vy * dt; s.vx *= 0.94; s.vy = s.vy * 0.94 + 18 * dt; s.rot += dt * 2;
-        var lf = 1 - s.life / s.max;
-        ctx.globalAlpha = lf;
-        ctx.drawImage(sprite, s.x - s.s * 3.2, s.y - s.s * 3.2, s.s * 6.4, s.s * 6.4);
-        ctx.fillStyle = 'rgba(255,' + Math.round(160 + 95 * lf) + ',' + Math.round(180 + 75 * lf) + ',1)';
-        drawStar(s.x, s.y, s.s * (0.6 + lf), s.rot);
       }
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
