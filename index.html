@@ -494,7 +494,11 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
 .oa-globe { position: absolute; z-index: 1; pointer-events: none; top: 50%; right: max(8px, calc((100vw - 1280px) / 2 - 40px));
   width: min(560px, 40vw); height: min(560px, 40vw); transform: translateY(-58%); opacity: 0; transition: opacity 1.6s ease .2s; }
 .oa-globe.is-ready { opacity: 1; }
-@media (max-width: 1023px) { .oa-globe { display: none; } }
+@media (max-width: 1023px) {
+  /* на телефоне сфера стоит за заголовком, приглушённая, чтобы не мешать читать */
+  .oa-globe { top: 40%; right: 50%; width: min(460px, 104vw); height: min(460px, 104vw); transform: translate(50%, -50%); }
+  .oa-globe.is-ready { opacity: .45; }
+}
 
 /* ---------- бегущая строка ---------- */
 .oa-mq-sec { position: relative; z-index: 10; overflow: hidden; padding: 64px 0 72px; }
@@ -511,12 +515,14 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
 
 /* ---------- услуги: карточки наезжают друг на друга ---------- */
 .oa-dim { position: absolute; inset: 0; z-index: 25; border-radius: inherit; background: #000; opacity: 0; pointer-events: none; }
+#services-grid.oa-stack { display: flex !important; flex-direction: column; gap: 20px; }
+#services-grid.oa-stack > article { position: sticky; top: calc(76px + var(--i) * 14px); transform-origin: 50% 0; will-change: transform;
+  background: rgba(17,17,20,.96) !important; box-shadow: 0 -18px 44px rgba(0,0,0,.55);
+  transition: border-color .5s, box-shadow .5s !important; }
 @media (min-width: 1024px) {
-  #services-grid.oa-stack { display: flex !important; flex-direction: column; gap: 32px; }
-  #services-grid.oa-stack > article { position: sticky; top: calc(104px + var(--i) * 26px); transform-origin: 50% 0; will-change: transform;
-    display: grid !important; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); gap: 56px; align-items: center;
-    background: rgba(17,17,20,.94) !important; box-shadow: 0 -24px 60px rgba(0,0,0,.55);
-    transition: border-color .5s, box-shadow .5s !important; }
+  #services-grid.oa-stack { gap: 32px; }
+  #services-grid.oa-stack > article { top: calc(104px + var(--i) * 26px);
+    display: grid !important; grid-template-columns: minmax(0,1.05fr) minmax(0,1fr); gap: 56px; align-items: center; }
   #services-grid.oa-stack > article > .border-t { border-top: 0 !important; border-left: 1px solid rgba(255,255,255,.1); padding: 8px 0 8px 48px !important; margin: 0 !important; }
   #services-grid.oa-stack > article > .border-t ul { grid-template-columns: 1fr !important; }
 }
@@ -557,9 +563,9 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     smoothScroll:true,  // плавная инерционная прокрутка (только компьютер)
     cursor:      true,  // фирменный курсор с подписями (только компьютер)
     stars:       true,  // интерактивное звёздное небо: всё поле реагирует на мышку: объём + звёзды тянутся к курсору нитями
-    globe:       true,  // вращающаяся сфера из точек на первом экране (только компьютер)
+    globe:       true,  // вращающаяся сфера из точек на первом экране
     marquee:     true,  // бегущая строка с услугами под первым экраном
-    stack:       true,  // карточки услуг наезжают друг на друга при прокрутке (только компьютер)
+    stack:       true,  // карточки услуг наезжают друг на друга при прокрутке
     headings:    true,  // заголовки выезжают по словам
     scramble:    true,  // «хакерская» расшифровка подписей // ...
     counters:    true,  // цифры набегают от нуля
@@ -593,6 +599,13 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     ptr.x = e.clientX; ptr.y = e.clientY; ptr.active = e.pointerType === 'mouse';
   }, { passive: true });
   doc.addEventListener('mouseleave', function () { ptr.active = false; });
+  // палец на экране телефона — звёзды и сфера реагируют на него, как на мышку
+  ptr.touch = false;
+  function onTouch(e) { var t = e.touches && e.touches[0]; if (!t) return; ptr.x = t.clientX; ptr.y = t.clientY; ptr.touch = true; }
+  addEventListener('touchstart', onTouch, { passive: true });
+  addEventListener('touchmove', onTouch, { passive: true });
+  addEventListener('touchend', function (e) { if (!e.touches.length) ptr.touch = false; }, { passive: true });
+  addEventListener('touchcancel', function () { ptr.touch = false; }, { passive: true });
 
   var scroll = { y: window.scrollY, v: 0, dir: 1 };
   var tickers = [], lenis = null, lastT = performance.now();
@@ -750,6 +763,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
       W = innerWidth; H = innerHeight;
+      R = W < 700 ? 150 : 210;
       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       // на телефоне высота «прыгает» из-за адресной строки — не пересоздаём звёзды без нужды
@@ -766,7 +780,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
     }, { passive: true });
 
     function frame(dt, now) {
-      var t = now / 1000, mx = ptr.x, my = ptr.y, mOn = ptr.active && FINE, sy = scroll.y;
+      var t = now / 1000, mx = ptr.x, my = ptr.y, mOn = (ptr.active && FINE) || ptr.touch, sy = scroll.y;
       // камера смещается вслед за мышкой — ближние звёзды уходят сильнее дальних, появляется объём
       cam.x = lerp(cam.x, mOn ? mx / W * 2 - 1 : 0, 0.035);
       cam.y = lerp(cam.y, mOn ? my / H * 2 - 1 : 0, 0.035);
@@ -842,7 +856,7 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
   /* ================= СФЕРА НА ПЕРВОМ ЭКРАНЕ ================= */
   function globe() {
     var hero = doc.getElementById('hero');
-    if (!CFG.globe || !hero || !FINE || innerWidth < 1024) return;
+    if (!CFG.globe || !hero) return;
     var cv = doc.createElement('canvas');
     cv.className = 'oa-globe'; cv.setAttribute('aria-hidden', 'true');
     hero.insertBefore(cv, hero.firstChild.nextSibling);
@@ -852,9 +866,15 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
       S = cv.clientWidth || 520;
       cv.width = cv.height = Math.round(S * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // на телефоне центр сферы — ровно за главным заголовком
+      var h1 = hero.querySelector('h1');
+      if (innerWidth < 1024 && h1) {
+        var hr = hero.getBoundingClientRect(), r = h1.getBoundingClientRect();
+        cv.style.top = Math.round(r.top - hr.top + r.height / 2) + 'px';
+      } else cv.style.top = '';
     }
     addEventListener('resize', size); size();
-    var N = 820, pts = [], golden = Math.PI * (3 - Math.sqrt(5));
+    var N = FINE ? 820 : 600, pts = [], golden = Math.PI * (3 - Math.sqrt(5));
     for (var i = 0; i < N; i++) {
       var y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y * y), th = golden * i;
       pts.push([Math.cos(th) * r, y, Math.sin(th) * r]);
@@ -875,9 +895,10 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
       if (!inView || !S) return;
       var t = now / 1000;
       var mx = (ptr.x / innerWidth - 0.5), my = (ptr.y / innerHeight - 0.5);
-      spin = lerp(spin, ptr.active ? mx * 0.9 : 0, 0.03);
+      var on = ptr.active || ptr.touch;
+      spin = lerp(spin, on ? mx * 0.9 : 0, 0.03);
       rotY += dt * (0.16 + spin);
-      tiltT = -0.35 + (ptr.active ? my * 0.5 : 0);
+      tiltT = -0.35 + (on ? my * 0.5 : 0);
       tiltX = lerp(tiltX, tiltT, 0.04);
       ctx.clearRect(0, 0, S, S);
       // мягкое свечение позади сферы
@@ -1136,16 +1157,23 @@ html.oa-cur-on .t-popup a, html.oa-cur-on .t-popup button, html.oa-cur-on .t972 
       c.style.setProperty('--i', i);
       var dim = doc.createElement('div'); dim.className = 'oa-dim'; c.appendChild(dim); c._oaDim = dim;
     });
+    var vh = innerHeight, lastVW = innerWidth;
     function apply() {
-      var on = mq.matches;
-      grid.classList.toggle('oa-stack', on);
-      cards.forEach(function (c) {
-        if (on) { c.classList.remove('reveal'); c.classList.add('in'); }
-        else { c.style.transform = ''; c._oaDim.style.opacity = 0; }
+      var desk = mq.matches;
+      grid.classList.add('oa-stack');
+      cards.forEach(function (c, i) {
+        // на телефоне карточки высокие: прилипают, когда видны целиком (низом к низу экрана),
+        // и только потом на них наезжает следующая — текст не обрезается
+        c.style.top = desk ? '' : Math.min(76 + i * 14, vh - c.offsetHeight - 16) + 'px';
+        c.style.transformOrigin = desk || c.offsetHeight < vh - 110 ? '' : '50% 100%';
+        c.classList.remove('reveal'); c.classList.add('in');
       });
     }
     apply();
+    if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(apply);
     if (mq.addEventListener) mq.addEventListener('change', apply); else if (mq.addListener) mq.addListener(apply);
+    // высота экрана телефона «прыгает» от адресной строки — пересчитываем только при повороте/смене ширины
+    addEventListener('resize', function () { if (Math.abs(innerWidth - lastVW) > 40) { lastVW = innerWidth; vh = innerHeight; apply(); } });
     var inView = false;
     if ('IntersectionObserver' in window) new IntersectionObserver(function (e) { inView = e[0].isIntersecting; }).observe(grid);
     onTick(function () {
